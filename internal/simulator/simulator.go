@@ -30,7 +30,7 @@ func (s Simulator) Process(request types.Request, startTime time.Time) (types.Re
 func (s Simulator) findRule(request types.Request) (rule.Rule, bool) {
 	i := slices.IndexFunc(s.rules, func(r rule.Rule) bool { return r.MatchRequest(request) })
 	if i == -1 {
-		return nil, false
+		return rule.Rule{}, false
 	}
 	return s.rules[i], true
 }

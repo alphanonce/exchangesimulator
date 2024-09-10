@@ -6,7 +6,7 @@ import (
 	"alphanonce.com/exchangesimulator/internal/types"
 )
 
-type Rule interface {
+type Rule struct {
 	RequestMatcher
 	Responder
 }
