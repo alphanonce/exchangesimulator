@@ -7,12 +7,14 @@ import (
 )
 
 type ResponseFromString struct {
+	statusCode   int
 	body         string
 	responseTime time.Duration
 }
 
-func NewResponseFromString(body string, responseTime time.Duration) ResponseFromString {
+func NewResponseFromString(statusCode int, body string, responseTime time.Duration) ResponseFromString {
 	return ResponseFromString{
+		statusCode:   statusCode,
 		body:         body,
 		responseTime: responseTime,
 	}
@@ -20,6 +22,7 @@ func NewResponseFromString(body string, responseTime time.Duration) ResponseFrom
 
 func (r ResponseFromString) Response(_ types.Request) types.Response {
 	return types.Response{
+		StatusCode: r.statusCode,
 		Body: []byte(r.body),
 	}
 }

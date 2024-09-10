@@ -63,5 +63,6 @@ func getRequest(ctx *fasthttp.RequestCtx) types.Request {
 }
 
 func setResponse(ctx *fasthttp.RequestCtx, response types.Response) {
+	ctx.Response.SetStatusCode(response.StatusCode)
 	ctx.Response.SetBody(response.Body)
 }

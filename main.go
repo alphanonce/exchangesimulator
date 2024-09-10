@@ -30,11 +30,11 @@ func main() {
 	rules := []rule.Rule{
 		{
 			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/api/v4/public/platform/status"),
-			Responder:      responder.NewResponseFromString(`{"status":"1"}`, time.Second),
+			Responder:      responder.NewResponseFromString(200, `{"status":"1"}`, time.Second),
 		},
 		{
 			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/api/v4/public/ping"),
-			Responder:      responder.NewResponseFromString(`["pong"]`, time.Second),
+			Responder:      responder.NewResponseFromString(200, `["pong"]`, time.Second),
 		},
 	}
 	s := simulator.NewSimulator(rules)

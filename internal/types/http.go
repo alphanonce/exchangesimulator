@@ -9,6 +9,6 @@ type Request struct {
 }
 
 type Response struct {
-	Header []byte
-	Body   []byte
+	StatusCode int
+	Body       []byte
 }
