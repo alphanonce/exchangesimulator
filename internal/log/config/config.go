@@ -11,7 +11,6 @@ const (
 	DefaultLogger LoggerType = iota
 	Slog
 	Zerolog
-	Zap
 )
 
 type FormatType uint8

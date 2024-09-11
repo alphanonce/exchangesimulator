@@ -15,8 +15,6 @@ func New(c config.Config) *slog.Logger {
 		h = handler.NewSlogHandler(c)
 	case config.Zerolog:
 		h = handler.NewZerologHandler(c)
-	case config.Zap:
-		panic("not implemented")
 	default:
 		h = handler.NewSlogHandler(c)
 	}
