@@ -1,6 +1,12 @@
 package request_matcher
 
-import "alphanonce.com/exchangesimulator/internal/types"
+import (
+	"alphanonce.com/exchangesimulator/internal/rule"
+	"alphanonce.com/exchangesimulator/internal/types"
+)
+
+// Ensure RequestPredicate implements RequestMatcher
+var _ rule.RequestMatcher = (*RequestPredicate)(nil)
 
 type RequestPredicate struct {
 	method string

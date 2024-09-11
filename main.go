@@ -37,7 +37,7 @@ func main() {
 			Responder:      responder.NewResponseFromString(200, `["pong"]`, time.Second),
 		},
 	}
-	s := simulator.NewSimulator(rules)
+	s := simulator.NewRuleBasedSimulator(rules)
 	sv := server.NewFasthttpServer(s)
 	address := "localhost:8080"
 

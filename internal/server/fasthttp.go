@@ -2,6 +2,7 @@ package server
 
 import (
 	"log/slog"
+	"net"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/simulator"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/valyala/fasthttp"
 )
+
+// Ensure FasthttpServer implements Server
+var _ Server = (*FasthttpServer)(nil)
 
 type FasthttpServer struct {
 	simulator simulator.Simulator
@@ -21,33 +25,37 @@ func NewFasthttpServer(s simulator.Simulator) FasthttpServer {
 }
 
 func (s FasthttpServer) Run(address string) error {
-	requestHandler := func(ctx *fasthttp.RequestCtx) {
-		logger.Debug(
-			"Received a request",
-			slog.Any("start_time", ctx.Time()),
-			slog.String("request", ctx.Request.String()),
-		)
-
-		request := getRequest(ctx)
-		response, endTime := s.simulator.Process(request, ctx.Time())
-		setResponse(ctx, response)
-		time.Sleep(time.Until(endTime))
-
-		logger.Debug(
-			"Completed a request",
-			slog.Any("start_time", ctx.Time()),
-			slog.Any("end_time", endTime),
-			slog.String("request", ctx.Request.String()),
-			slog.String("response", ctx.Response.String()),
-		)
-	}
-
-	err := fasthttp.ListenAndServe(address, requestHandler)
+	ln, err := net.Listen("tcp4", address)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return s.serve(ln)
+}
+
+func (s FasthttpServer) serve(ln net.Listener) error {
+	return fasthttp.Serve(ln, s.requestHandler)
+}
+
+func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
+	logger.Debug(
+		"Received a request",
+		slog.Any("start_time", ctx.Time()),
+		slog.String("request", ctx.Request.String()),
+	)
+
+	request := getRequest(ctx)
+	response, endTime := s.simulator.Process(request, ctx.Time())
+	setResponse(ctx, response)
+	time.Sleep(time.Until(endTime))
+
+	logger.Debug(
+		"Completed a request",
+		slog.Any("start_time", ctx.Time()),
+		slog.Any("end_time", endTime),
+		slog.String("request", ctx.Request.String()),
+		slog.String("response", ctx.Response.String()),
+	)
 }
 
 func getRequest(ctx *fasthttp.RequestCtx) types.Request {

@@ -8,17 +8,20 @@ import (
 	"alphanonce.com/exchangesimulator/internal/types"
 )
 
-type Simulator struct {
+// Ensure Simulator implements Interface
+var _ Simulator = (*RuleBasedSimulator)(nil)
+
+type RuleBasedSimulator struct {
 	rules []rule.Rule
 }
 
-func NewSimulator(rules []rule.Rule) Simulator {
-	return Simulator{
+func NewRuleBasedSimulator(rules []rule.Rule) RuleBasedSimulator {
+	return RuleBasedSimulator{
 		rules: rules,
 	}
 }
 
-func (s Simulator) Process(request types.Request, startTime time.Time) (types.Response, time.Time) {
+func (s RuleBasedSimulator) Process(request types.Request, startTime time.Time) (types.Response, time.Time) {
 	r, ok := s.findRule(request)
 	if !ok {
 		return types.Response{Body: []byte("TODO: not implemented")}, startTime
@@ -27,7 +30,7 @@ func (s Simulator) Process(request types.Request, startTime time.Time) (types.Re
 	return r.Response(request), startTime.Add(r.ResponseTime())
 }
 
-func (s Simulator) findRule(request types.Request) (rule.Rule, bool) {
+func (s RuleBasedSimulator) findRule(request types.Request) (rule.Rule, bool) {
 	i := slices.IndexFunc(s.rules, func(r rule.Rule) bool { return r.MatchRequest(request) })
 	if i == -1 {
 		return rule.Rule{}, false
