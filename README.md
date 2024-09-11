@@ -1,3 +1,7 @@
 # Exchange Simulator
 
-TODO
+## Run tests
+
+```
+go test ./...
+```
