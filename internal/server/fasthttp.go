@@ -23,7 +23,7 @@ func NewFasthttpServer(s simulator.Simulator) FasthttpServer {
 func (s FasthttpServer) Run(address string) error {
 	requestHandler := func(ctx *fasthttp.RequestCtx) {
 		logger.Debug(
-			"[Run] Received a request",
+			"Received a request",
 			slog.Any("start_time", ctx.Time()),
 			slog.String("request", ctx.Request.String()),
 		)
@@ -34,7 +34,7 @@ func (s FasthttpServer) Run(address string) error {
 		time.Sleep(time.Until(endTime))
 
 		logger.Debug(
-			"[Run] Completed a request",
+			"Completed a request",
 			slog.Any("start_time", ctx.Time()),
 			slog.Any("end_time", endTime),
 			slog.String("request", ctx.Request.String()),
@@ -42,10 +42,8 @@ func (s FasthttpServer) Run(address string) error {
 		)
 	}
 
-	logger.Info("FasthttpServer is starting", slog.String("address", address))
 	err := fasthttp.ListenAndServe(address, requestHandler)
 	if err != nil {
-		logger.Error("Server failed to start")
 		return err
 	}
 

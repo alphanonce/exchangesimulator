@@ -39,10 +39,12 @@ func main() {
 	}
 	s := simulator.NewSimulator(rules)
 	sv := server.NewFasthttpServer(s)
+	address := "localhost:8080"
 
-	err := sv.Run("localhost:8080")
+	logger.Info("Server is starting", slog.String("address", address))
+	err := sv.Run(address)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("Server encountered an error while running", slog.Any("error", err))
 		return
 	}
 }
