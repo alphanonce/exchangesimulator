@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"log/slog"
 	"time"
 
@@ -11,12 +12,16 @@ import (
 )
 
 func NewZerologHandler(c config.Config) slog.Handler {
+	var out io.Writer
 	if c.Format == config.Text {
+		out = zerolog.ConsoleWriter{
+			Out:        c.Out,
+			TimeFormat: time.RFC3339,
+		}
+	} else {
+		out = c.Out
 	}
-	logger := zerolog.New(zerolog.ConsoleWriter{
-		Out:        c.Out,
-		TimeFormat: time.RFC3339,
-	})
+	logger := zerolog.New(out)
 	return slogzerolog.Option{
 		Level:     c.Level,
 		Logger:    &logger,

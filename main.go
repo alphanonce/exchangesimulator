@@ -20,7 +20,7 @@ func init() {
 	logger = log.New(config.Config{
 		Out:       os.Stdout,
 		Logger:    config.Zerolog,
-		Format:    config.Json,
+		Format:    config.Text,
 		AddSource: false,
 		Level:     slog.LevelDebug,
 	}).With(slog.String("package", "main"))
