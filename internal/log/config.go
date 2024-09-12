@@ -21,7 +21,15 @@ const (
 	Json
 )
 
-type Level int8
+type Leveler = slog.Leveler
+type Level = slog.Level
+
+const (
+	LevelDebug Level = slog.LevelDebug
+	LevelInfo  Level = slog.LevelInfo
+	LevelWarn  Level = slog.LevelWarn
+	LevelError Level = slog.LevelError
+)
 
 type Config struct {
 	Out io.Writer
@@ -30,5 +38,5 @@ type Config struct {
 	Format FormatType
 
 	AddSource bool
-	Level     slog.Leveler
+	Level     Leveler
 }

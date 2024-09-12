@@ -1,10 +1,10 @@
 package server
 
 import (
-	"log/slog"
 	"net"
 	"time"
 
+	"alphanonce.com/exchangesimulator/internal/log"
 	"alphanonce.com/exchangesimulator/internal/simulator"
 	"alphanonce.com/exchangesimulator/internal/types"
 
@@ -40,8 +40,8 @@ func (s FasthttpServer) serve(ln net.Listener) error {
 func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
 	logger.Debug(
 		"Received a request",
-		slog.Any("start_time", ctx.Time()),
-		slog.String("request", ctx.Request.String()),
+		log.Any("start_time", ctx.Time()),
+		log.String("request", ctx.Request.String()),
 	)
 
 	request := getRequest(ctx)
@@ -51,10 +51,10 @@ func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
 
 	logger.Debug(
 		"Completed a request",
-		slog.Any("start_time", ctx.Time()),
-		slog.Any("end_time", endTime),
-		slog.String("request", ctx.Request.String()),
-		slog.String("response", ctx.Response.String()),
+		log.Any("start_time", ctx.Time()),
+		log.Any("end_time", endTime),
+		log.String("request", ctx.Request.String()),
+		log.String("response", ctx.Response.String()),
 	)
 }
 

@@ -1,13 +1,11 @@
 package server
 
 import (
-	"log/slog"
-
 	"alphanonce.com/exchangesimulator/internal/log"
 )
 
-var logger *slog.Logger
+var logger *log.Logger
 
 func init() {
-	logger = log.NewDefault().With(slog.String("package", "server"))
+	logger = log.NewDefault().With(log.String("package", "server"))
 }

@@ -5,7 +5,9 @@ import (
 	"os"
 )
 
-func New(c Config) *slog.Logger {
+type Logger = slog.Logger
+
+func New(c Config) *Logger {
 	var h slog.Handler
 
 	switch c.Logger {
@@ -20,12 +22,12 @@ func New(c Config) *slog.Logger {
 	return slog.New(h)
 }
 
-func NewDefault() *slog.Logger {
+func NewDefault() *Logger {
 	return New(Config{
 		Out:       os.Stdout,
 		Logger:    Zerolog,
 		Format:    Text,
 		AddSource: false,
-		Level:     slog.LevelDebug,
+		Level:     LevelDebug,
 	})
 }

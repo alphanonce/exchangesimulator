@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log/slog"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
@@ -12,10 +11,10 @@ import (
 	"alphanonce.com/exchangesimulator/internal/simulator"
 )
 
-var logger *slog.Logger
+var logger *log.Logger
 
 func init() {
-	logger = log.NewDefault().With(slog.String("package", "main"))
+	logger = log.NewDefault().With(log.String("package", "main"))
 }
 
 func main() {
@@ -33,10 +32,10 @@ func main() {
 	sv := server.NewFasthttpServer(s)
 	address := "localhost:8080"
 
-	logger.Info("Server is starting", slog.String("address", address))
+	logger.Info("Server is starting", log.String("address", address))
 	err := sv.Run(address)
 	if err != nil {
-		logger.Error("Server encountered an error while running", slog.Any("error", err))
+		logger.Error("Server encountered an error while running", log.Any("error", err))
 		return
 	}
 }
