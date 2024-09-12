@@ -1,12 +1,10 @@
-package handler
+package log
 
 import (
 	"log/slog"
-
-	"alphanonce.com/exchangesimulator/internal/log/config"
 )
 
-func NewSlogHandler(c config.Config) slog.Handler {
+func newSlogHandler(c Config) slog.Handler {
 	o := slog.HandlerOptions{
 		AddSource:   c.AddSource,
 		Level:       c.Level,
@@ -14,9 +12,9 @@ func NewSlogHandler(c config.Config) slog.Handler {
 	}
 
 	switch c.Format {
-	case config.DefaultFormat, config.Text:
+	case DefaultFormat, Text:
 		return slog.NewTextHandler(c.Out, &o)
-	case config.Json:
+	case Json:
 		return slog.NewJSONHandler(c.Out, &o)
 	default:
 		panic("unknown format")

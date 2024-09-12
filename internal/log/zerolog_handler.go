@@ -1,19 +1,17 @@
-package handler
+package log
 
 import (
 	"io"
 	"log/slog"
 	"time"
 
-	"alphanonce.com/exchangesimulator/internal/log/config"
-
 	"github.com/rs/zerolog"
 	slogzerolog "github.com/samber/slog-zerolog/v2"
 )
 
-func NewZerologHandler(c config.Config) slog.Handler {
+func newZerologHandler(c Config) slog.Handler {
 	var out io.Writer
-	if c.Format == config.Text {
+	if c.Format == Text {
 		out = zerolog.ConsoleWriter{
 			Out:        c.Out,
 			TimeFormat: time.RFC3339,
