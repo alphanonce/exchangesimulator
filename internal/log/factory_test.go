@@ -47,3 +47,9 @@ func TestNew(t *testing.T) {
 		})
 	}
 }
+
+func TestNewDefault(t *testing.T) {
+	logger := NewDefault()
+
+	assert.NotNil(t, logger, "Default logger should not be nil")
+}

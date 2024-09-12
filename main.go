@@ -2,11 +2,9 @@ package main
 
 import (
 	"log/slog"
-	"os"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
-	"alphanonce.com/exchangesimulator/internal/log/config"
 	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/rule/request_matcher"
 	"alphanonce.com/exchangesimulator/internal/rule/responder"
@@ -17,13 +15,7 @@ import (
 var logger *slog.Logger
 
 func init() {
-	logger = log.New(config.Config{
-		Out:       os.Stdout,
-		Logger:    config.Zerolog,
-		Format:    config.Text,
-		AddSource: false,
-		Level:     slog.LevelDebug,
-	}).With(slog.String("package", "main"))
+	logger = log.NewDefault().With(slog.String("package", "main"))
 }
 
 func main() {

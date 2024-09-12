@@ -2,6 +2,7 @@ package log
 
 import (
 	"log/slog"
+	"os"
 
 	"alphanonce.com/exchangesimulator/internal/log/config"
 	"alphanonce.com/exchangesimulator/internal/log/handler"
@@ -20,4 +21,14 @@ func New(c config.Config) *slog.Logger {
 	}
 
 	return slog.New(h)
+}
+
+func NewDefault() *slog.Logger {
+	return New(config.Config{
+		Out:       os.Stdout,
+		Logger:    config.Zerolog,
+		Format:    config.Text,
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	})
 }
