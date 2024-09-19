@@ -1,15 +1,18 @@
 package simulator
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
 	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/types"
+	"github.com/coder/websocket"
 )
 
 type Simulator struct {
@@ -40,6 +43,17 @@ func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
 		log.Any("start_time", startTime),
 		log.String("request", fmt.Sprintf("%+v", request)),
 	)
+
+	if string(r.URL.Path) == "/ws" {
+		handleWebSocket(w, r)
+
+		logger.Debug(
+			"Completed a websocket request",
+			log.Any("start_time", startTime),
+			log.String("request", fmt.Sprintf("%+v", request)),
+		)
+		return
+	}
 
 	response, endTime := s.process(request, startTime)
 	setResponse(w, response)
@@ -90,5 +104,43 @@ func getRequest(r *http.Request) (types.Request, error) {
 func setResponse(w http.ResponseWriter, response types.Response) {
 	w.WriteHeader(response.StatusCode)
 	w.Write(response.Body)
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	// Upgrade HTTP connection to WebSocket
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		logger.Error("Error upgrading to WebSocket", log.Any("error", err))
+		return
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "defer close")
+
+	logger.Info("Succeeded upgrading to WebSocket")
+
+	for i := 0; i < 5; i++ {
+		// Read message from client
+		messageType, p, err := conn.Read(ctx)
+		if err != nil {
+			logger.Error("Error reading WebSocket message", log.Any("error", err))
+			return
+		}
+
+		// Convert message to string
+		message := strings.TrimSpace(string(p))
+		fmt.Printf("Received message: %s %v\n", message, message == "ping")
+
+		// Check if the message is "ping"
+		if message == "ping" {
+			// Send "pong" response
+			err = conn.Write(ctx, messageType, []byte("pong"))
+			if err != nil {
+				logger.Error("Error writing WebSocket message", log.Any("error", err))
+				return
+			}
+			fmt.Println("Sent pong response")
+		}
+	}
 }
 

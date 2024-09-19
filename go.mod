@@ -3,6 +3,7 @@ module alphanonce.com/exchangesimulator
 go 1.22.5
 
 require (
+	github.com/coder/websocket v1.8.12
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/slog-zerolog/v2 v2.7.0
 	github.com/stretchr/testify v1.9.0
