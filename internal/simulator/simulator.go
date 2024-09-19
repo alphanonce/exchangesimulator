@@ -1,43 +1,30 @@
-package server
+package simulator
 
 import (
-	"net"
+	"slices"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
-	"alphanonce.com/exchangesimulator/internal/simulator"
+	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/types"
-
 	"github.com/valyala/fasthttp"
 )
 
-// Ensure FasthttpServer implements Server
-var _ Server = (*FasthttpServer)(nil)
-
-type FasthttpServer struct {
-	simulator simulator.Simulator
+type Simulator struct {
+	rules []rule.Rule
 }
 
-func NewFasthttpServer(s simulator.Simulator) FasthttpServer {
-	return FasthttpServer{
-		simulator: s,
+func New(rules []rule.Rule) Simulator {
+	return Simulator{
+		rules: rules,
 	}
 }
 
-func (s FasthttpServer) Run(address string) error {
-	ln, err := net.Listen("tcp4", address)
-	if err != nil {
-		return err
-	}
-
-	return s.serve(ln)
+func (s Simulator) Run(address string) error {
+	return fasthttp.ListenAndServe(address, s.requestHandler)
 }
 
-func (s FasthttpServer) serve(ln net.Listener) error {
-	return fasthttp.Serve(ln, s.requestHandler)
-}
-
-func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
+func (s Simulator) requestHandler(ctx *fasthttp.RequestCtx) {
 	logger.Debug(
 		"Received a request",
 		log.Any("start_time", ctx.Time()),
@@ -45,7 +32,8 @@ func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
 	)
 
 	request := getRequest(ctx)
-	response, endTime := s.simulator.Process(request, ctx.Time())
+	startTime := ctx.Time()
+	response, endTime := s.process(request, startTime)
 	setResponse(ctx, response)
 	time.Sleep(time.Until(endTime))
 
@@ -56,6 +44,23 @@ func (s FasthttpServer) requestHandler(ctx *fasthttp.RequestCtx) {
 		log.String("request", ctx.Request.String()),
 		log.String("response", ctx.Response.String()),
 	)
+}
+
+func (s Simulator) process(request types.Request, startTime time.Time) (types.Response, time.Time) {
+	r, ok := s.findRule(request)
+	if !ok {
+		return types.Response{Body: []byte("TODO: not implemented")}, startTime
+	}
+
+	return r.Response(request), startTime.Add(r.ResponseTime())
+}
+
+func (s Simulator) findRule(request types.Request) (rule.Rule, bool) {
+	i := slices.IndexFunc(s.rules, func(r rule.Rule) bool { return r.MatchRequest(request) })
+	if i == -1 {
+		return rule.Rule{}, false
+	}
+	return s.rules[i], true
 }
 
 func getRequest(ctx *fasthttp.RequestCtx) types.Request {
@@ -72,3 +77,4 @@ func setResponse(ctx *fasthttp.RequestCtx, response types.Response) {
 	ctx.Response.SetStatusCode(response.StatusCode)
 	ctx.Response.SetBody(response.Body)
 }
+

@@ -7,7 +7,6 @@ import (
 	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/rule/request_matcher"
 	"alphanonce.com/exchangesimulator/internal/rule/responder"
-	"alphanonce.com/exchangesimulator/internal/server"
 	"alphanonce.com/exchangesimulator/internal/simulator"
 )
 
@@ -28,12 +27,11 @@ func main() {
 			Responder:      responder.NewResponseFromString(200, `["pong"]`, time.Second),
 		},
 	}
-	s := simulator.NewRuleBasedSimulator(rules)
-	sv := server.NewFasthttpServer(s)
+	sim := simulator.New(rules)
 	address := "localhost:8080"
 
 	logger.Info("Server is starting", log.String("address", address))
-	err := sv.Run(address)
+	err := sim.Run(address)
 	if err != nil {
 		logger.Error("Server encountered an error while running", log.Any("error", err))
 		return

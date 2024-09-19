@@ -12,25 +12,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewRuleBasedSimulator(t *testing.T) {
+func TestNew(t *testing.T) {
 	rules := []rule.Rule{
 		{
 			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/test"),
 			Responder:      responder.NewResponseFromString(200, "OK", time.Second),
 		},
 	}
-	sim := NewRuleBasedSimulator(rules)
+	sim := New(rules)
 	assert.Equal(t, rules, sim.rules)
 }
 
-func TestRuleBasedSimulator_Process(t *testing.T) {
+func TestSimulator_process(t *testing.T) {
 	rules := []rule.Rule{
 		{
 			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/test"),
 			Responder:      responder.NewResponseFromString(200, "OK", time.Second),
 		},
 	}
-	sim := NewRuleBasedSimulator(rules)
+	sim := New(rules)
 
 	tests := []struct {
 		name      string
@@ -58,7 +58,7 @@ func TestRuleBasedSimulator_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			startTime := time.Now()
-			resp, endTime := sim.Process(tt.request, startTime)
+			resp, endTime := sim.process(tt.request, startTime)
 			assert.Equal(t, tt.wantCode, resp.StatusCode)
 			assert.Equal(t, tt.wantBody, string(resp.Body))
 			assert.Equal(t, startTime.Add(tt.wantDelay), endTime)

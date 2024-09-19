@@ -10,7 +10,6 @@ import (
 	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/rule/request_matcher"
 	"alphanonce.com/exchangesimulator/internal/rule/responder"
-	"alphanonce.com/exchangesimulator/internal/server"
 	"alphanonce.com/exchangesimulator/internal/simulator"
 
 	"github.com/stretchr/testify/assert"
@@ -33,14 +32,11 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// Create a simulator
-	sim := simulator.NewRuleBasedSimulator(rules)
+	sim := simulator.New(rules)
 
-	// Create a server
-	srv := server.NewFasthttpServer(sim)
-
-	// Start the server
+	// Start the simulator
 	go func() {
-		err := srv.Run(addr)
+		err := sim.Run(addr)
 		require.NoError(t, err)
 	}()
 
