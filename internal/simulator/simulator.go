@@ -1,13 +1,15 @@
 package simulator
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
 	"alphanonce.com/exchangesimulator/internal/rule"
 	"alphanonce.com/exchangesimulator/internal/types"
-	"github.com/valyala/fasthttp"
 )
 
 type Simulator struct {
@@ -21,35 +23,41 @@ func New(rules []rule.Rule) Simulator {
 }
 
 func (s Simulator) Run(address string) error {
-	return fasthttp.ListenAndServe(address, s.requestHandler)
+	return http.ListenAndServe(address, http.HandlerFunc(s.requestHandler))
 }
 
-func (s Simulator) requestHandler(ctx *fasthttp.RequestCtx) {
+func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	request, err := getRequest(r)
+	if err != nil {
+		logger.Error("Error reading request body", log.Any("error", err))
+		http.Error(w, "Unable to read request body", http.StatusBadRequest)
+		return
+	}
+
 	logger.Debug(
 		"Received a request",
-		log.Any("start_time", ctx.Time()),
-		log.String("request", ctx.Request.String()),
+		log.Any("start_time", startTime),
+		log.String("request", fmt.Sprintf("%+v", request)),
 	)
 
-	request := getRequest(ctx)
-	startTime := ctx.Time()
 	response, endTime := s.process(request, startTime)
-	setResponse(ctx, response)
+	setResponse(w, response)
 	time.Sleep(time.Until(endTime))
 
 	logger.Debug(
 		"Completed a request",
-		log.Any("start_time", ctx.Time()),
+		log.Any("start_time", startTime),
 		log.Any("end_time", endTime),
-		log.String("request", ctx.Request.String()),
-		log.String("response", ctx.Response.String()),
+		log.String("request", fmt.Sprintf("%+v", request)),
+		log.String("response", fmt.Sprintf("%+v", response)),
 	)
 }
 
 func (s Simulator) process(request types.Request, startTime time.Time) (types.Response, time.Time) {
 	r, ok := s.findRule(request)
 	if !ok {
-		return types.Response{Body: []byte("TODO: not implemented")}, startTime
+		return types.Response{StatusCode: 404, Body: []byte("TODO: not implemented")}, startTime
 	}
 
 	return r.Response(request), startTime.Add(r.ResponseTime())
@@ -63,18 +71,24 @@ func (s Simulator) findRule(request types.Request) (rule.Rule, bool) {
 	return s.rules[i], true
 }
 
-func getRequest(ctx *fasthttp.RequestCtx) types.Request {
-	return types.Request{
-		Method:      string(ctx.Request.Header.Method()),
-		Host:        string(ctx.Request.Header.Host()),
-		Path:        string(ctx.Request.URI().Path()),
-		QueryString: string(ctx.Request.URI().QueryString()),
-		Body:        ctx.Request.Body(),
+func getRequest(r *http.Request) (types.Request, error) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		return types.Request{}, err
 	}
+
+	request := types.Request{
+		Method:      r.Method,
+		Host:        r.Host,
+		Path:        r.URL.Path,
+		QueryString: "", // TODO
+		Body:        bodyBytes,
+	}
+	return request, nil
 }
 
-func setResponse(ctx *fasthttp.RequestCtx, response types.Response) {
-	ctx.Response.SetStatusCode(response.StatusCode)
-	ctx.Response.SetBody(response.Body)
+func setResponse(w http.ResponseWriter, response types.Response) {
+	w.WriteHeader(response.StatusCode)
+	w.Write(response.Body)
 }
 

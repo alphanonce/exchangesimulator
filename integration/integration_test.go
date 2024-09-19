@@ -74,7 +74,7 @@ func TestIntegration(t *testing.T) {
 			name:           "Unmatched route",
 			method:         "GET",
 			path:           "/unknown",
-			expectedStatus: 200, // Assuming default response for unmatched routes
+			expectedStatus: 404,
 			expectedBody:   "TODO: not implemented",
 			expectedDelay:  0,
 		},

@@ -49,7 +49,7 @@ func TestSimulator_process(t *testing.T) {
 		{
 			name:      "Non-matching request",
 			request:   types.Request{Method: "POST", Path: "/other"},
-			wantCode:  0,
+			wantCode:  404,
 			wantBody:  "TODO: not implemented",
 			wantDelay: 0,
 		},
