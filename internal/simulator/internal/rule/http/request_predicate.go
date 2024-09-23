@@ -1,12 +1,7 @@
-package request_matcher
-
-import (
-	"alphanonce.com/exchangesimulator/internal/rule"
-	"alphanonce.com/exchangesimulator/internal/types"
-)
+package http
 
 // Ensure RequestPredicate implements RequestMatcher
-var _ rule.RequestMatcher = (*RequestPredicate)(nil)
+var _ RequestMatcher = (*RequestPredicate)(nil)
 
 type RequestPredicate struct {
 	method string
@@ -20,7 +15,7 @@ func NewRequestPredicate(method string, path string) RequestPredicate {
 	}
 }
 
-func (r RequestPredicate) MatchRequest(request types.Request) bool {
+func (r RequestPredicate) MatchRequest(request Request) bool {
 	return (r.method == "" || request.Method == r.method) &&
 		(r.path == "" || request.Path == r.path)
 }

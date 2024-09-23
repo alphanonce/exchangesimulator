@@ -1,4 +1,4 @@
-package types
+package http
 
 type Request struct {
 	Method      string
@@ -6,9 +6,4 @@ type Request struct {
 	Path        string
 	QueryString string
 	Body        []byte
-}
-
-type Response struct {
-	StatusCode int
-	Body       []byte
 }

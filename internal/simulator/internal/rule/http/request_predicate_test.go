@@ -1,9 +1,7 @@
-package request_matcher
+package http
 
 import (
 	"testing"
-
-	"alphanonce.com/exchangesimulator/internal/types"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,39 +16,39 @@ func TestRequestPredicate_MatchRequest(t *testing.T) {
 	tests := []struct {
 		name      string
 		predicate RequestPredicate
-		request   types.Request
-		want      bool
+		request   Request
+		expected  bool
 	}{
 		{
 			name:      "Exact match",
 			predicate: NewRequestPredicate("GET", "/test"),
-			request:   types.Request{Method: "GET", Path: "/test"},
-			want:      true,
+			request:   Request{Method: "GET", Path: "/test"},
+			expected:  true,
 		},
 		{
 			name:      "Method mismatch",
 			predicate: NewRequestPredicate("GET", "/test"),
-			request:   types.Request{Method: "POST", Path: "/test"},
-			want:      false,
+			request:   Request{Method: "POST", Path: "/test"},
+			expected:  false,
 		},
 		{
 			name:      "Path mismatch",
 			predicate: NewRequestPredicate("GET", "/test"),
-			request:   types.Request{Method: "GET", Path: "/other"},
-			want:      false,
+			request:   Request{Method: "GET", Path: "/other"},
+			expected:  false,
 		},
 		{
 			name:      "Empty predicate matches all",
 			predicate: NewRequestPredicate("", ""),
-			request:   types.Request{Method: "POST", Path: "/any"},
-			want:      true,
+			request:   Request{Method: "POST", Path: "/any"},
+			expected:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.predicate.MatchRequest(tt.request)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
