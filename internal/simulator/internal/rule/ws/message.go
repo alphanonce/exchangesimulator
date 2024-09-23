@@ -10,5 +10,5 @@ const (
 
 type Message struct {
 	Type MessageType
-	Data      []byte
+	Data []byte
 }

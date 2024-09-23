@@ -1,10 +1,12 @@
 package ws
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestNewMessageFromString(t *testing.T) {
@@ -12,11 +14,11 @@ func TestNewMessageFromString(t *testing.T) {
 	data := "test data"
 	responseTime := 100 * time.Millisecond
 
-	message := NewMessageFromString(messageType, data, responseTime)
+	h := NewMessageFromString(messageType, data, responseTime)
 
-	assert.Equal(t, messageType, message.messageType)
-	assert.Equal(t, []byte(data), message.data)
-	assert.Equal(t, responseTime, message.responseTime)
+	assert.Equal(t, messageType, h.messageType)
+	assert.Equal(t, []byte(data), h.data)
+	assert.Equal(t, responseTime, h.responseTime)
 }
 
 func TestMessageFromString_Response(t *testing.T) {
@@ -24,11 +26,16 @@ func TestMessageFromString_Response(t *testing.T) {
 	data := "response data"
 	responseTime := 50 * time.Millisecond
 
-	message := NewMessageFromString(messageType, data, responseTime)
-	response := message.Response(Message{}) // Input message is ignored
+	h := NewMessageFromString(messageType, data, responseTime)
 
-	assert.Equal(t, messageType, response.Type)
-	assert.Equal(t, []byte(data), response.Data)
+	ctx := context.Background()
+	mockConn := new(MockConnection)
+	mockConn.On("Write", ctx, Message{Type: messageType, Data: []byte(data)}).Return(nil)
+
+	err := h.Response(ctx, Message{}, mockConn)
+
+	assert.NoError(t, err)
+	mockConn.AssertExpectations(t)
 }
 
 func TestMessageFromString_ResponseTime(t *testing.T) {
@@ -36,7 +43,16 @@ func TestMessageFromString_ResponseTime(t *testing.T) {
 	data := "test"
 	responseTime := 75 * time.Millisecond
 
-	message := NewMessageFromString(messageType, data, responseTime)
+	h := NewMessageFromString(messageType, data, responseTime)
 
-	assert.Equal(t, responseTime, message.ResponseTime())
+	start := time.Now()
+	ctx := context.Background()
+	mockConn := new(MockConnection)
+	mockConn.On("Write", ctx, mock.Anything).Return(nil)
+
+	err := h.Response(ctx, Message{}, mockConn)
+
+	elapsed := time.Since(start)
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, elapsed, responseTime)
 }

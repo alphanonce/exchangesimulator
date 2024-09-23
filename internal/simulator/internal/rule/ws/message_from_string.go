@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"time"
 )
 
@@ -21,13 +22,12 @@ func NewMessageFromString(messageType MessageType, data string, responseTime tim
 	}
 }
 
-func (r MessageFromString) Response(_ Message) Message {
-	return Message{
+func (r MessageFromString) Response(ctx context.Context, _ Message, conn Connection) error {
+	message := Message{
 		Type: r.messageType,
 		Data: r.data,
 	}
-}
-
-func (r MessageFromString) ResponseTime() time.Duration {
-	return r.responseTime
+	time.Sleep(r.responseTime)
+	err := conn.Write(ctx, message)
+	return err
 }

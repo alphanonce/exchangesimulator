@@ -7,6 +7,7 @@ import (
 )
 
 type WsRule = ws.Rule
+type WsConnection = ws.Connection
 type WsMessage = ws.Message
 type WsMessageType = ws.MessageType
 

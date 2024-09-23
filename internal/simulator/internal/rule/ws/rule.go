@@ -1,8 +1,6 @@
 package ws
 
-import (
-	"time"
-)
+import "context"
 
 type Rule struct {
 	MessageMatcher
@@ -14,6 +12,5 @@ type MessageMatcher interface {
 }
 
 type Responder interface {
-	Response(Message) Message
-	ResponseTime() time.Duration
+	Response(context.Context, Message, Connection) error
 }

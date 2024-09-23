@@ -106,86 +106,34 @@ func (s Simulator) wsRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("Succeeded upgrading to WebSocket")
 
-	s.handleWsConnection(r.Context(), conn)
+	s.handleWsConnection(r.Context(), wrapConnection(conn))
 }
 
-func (s Simulator) handleWsConnection(ctx context.Context, conn *websocket.Conn) {
+func (s Simulator) handleWsConnection(ctx context.Context, conn WsConnection) {
 	for {
-		incomingType, incomingData, err := conn.Read(ctx)
+		incomingMsg, err := conn.Read(ctx)
 		if err != nil {
 			logger.Error("Error reading WebSocket message", log.Any("error", err))
 			return
 		}
-		startTime := time.Now()
 
-		logger.Debug(
-			"Received a WebSocket message",
-			log.Any("time", startTime),
-			log.Group("msg",
-				log.Any("data", incomingData),
-				log.String("type", incomingType.String()),
-			),
-		)
-
-		internalRequest := convertWsMessageToInternal(incomingData, incomingType)
-		internalResponse, endTime := s.simulateWsResponse(internalRequest, startTime)
-		outgoingData, outgoingType := convertWsMessageFromInternal(internalResponse)
-		time.Sleep(time.Until(endTime))
-
-		err = conn.Write(ctx, outgoingType, outgoingData)
+		err = s.simulateWsResponse(ctx, incomingMsg, conn)
 		if err != nil {
-			logger.Error("Error sending WebSocket message", log.Any("error", err))
+			logger.Error("Error while handling WebSocket message", log.Any("error", err))
 			return
 		}
-
-		logger.Debug(
-			"Sent a WebSocket message",
-			log.Any("time", endTime),
-			log.Any("response_time", endTime.Sub(startTime)),
-			log.Group("msg",
-				log.Any("data", outgoingData),
-				log.String("type", outgoingType.String()),
-			),
-		)
 	}
 }
 
-func convertWsMessageToInternal(data []byte, messageType websocket.MessageType) WsMessage {
-	var t WsMessageType
-	switch messageType {
-	case websocket.MessageText:
-		t = WsMessageText
-	case websocket.MessageBinary:
-		t = WsMessageBinary
-	}
-
-	return WsMessage{
-		Type: t,
-		Data: data,
-	}
-}
-
-func convertWsMessageFromInternal(message WsMessage) ([]byte, websocket.MessageType) {
-	var messageType websocket.MessageType
-	switch message.Type {
-	case WsMessageText:
-		messageType = websocket.MessageText
-	case WsMessageBinary:
-		messageType = websocket.MessageBinary
-	}
-
-	return message.Data, messageType
-}
-
-func (s Simulator) simulateWsResponse(message WsMessage, startTime time.Time) (WsMessage, time.Time) {
+func (s Simulator) simulateWsResponse(ctx context.Context, message WsMessage, conn WsConnection) error {
 	rule, ok := s.config.GetWsRule(message)
 	if !ok {
 		response := WsMessage{
 			Type: WsMessageText,
 			Data: []byte("Invalid message"),
 		}
-		return response, startTime
+		return conn.Write(ctx, response)
 	}
 
-	return rule.Response(message), startTime.Add(rule.ResponseTime())
+	return rule.Response(ctx, message, conn)
 }
