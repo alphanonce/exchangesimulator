@@ -32,7 +32,7 @@ func TestMessageFromString_Response(t *testing.T) {
 	mockConn := new(MockConnection)
 	mockConn.On("Write", ctx, Message{Type: messageType, Data: []byte(data)}).Return(nil)
 
-	err := h.Response(ctx, Message{}, mockConn)
+	err := h.Handle(ctx, Message{}, mockConn)
 
 	assert.NoError(t, err)
 	mockConn.AssertExpectations(t)
@@ -50,7 +50,7 @@ func TestMessageFromString_ResponseTime(t *testing.T) {
 	mockConn := new(MockConnection)
 	mockConn.On("Write", ctx, mock.Anything).Return(nil)
 
-	err := h.Response(ctx, Message{}, mockConn)
+	err := h.Handle(ctx, Message{}, mockConn)
 
 	elapsed := time.Since(start)
 	assert.NoError(t, err)

@@ -77,7 +77,7 @@ func TestSimulator_simulateWsResponse(t *testing.T) {
 		WsRules: []WsRule{
 			{
 				MessageMatcher: NewWsMessagePredicate(WsMessageText, []byte("ping")),
-				Responder:      NewWsMessageFromString(WsMessageText, "pong", time.Second),
+				MessageHandler: NewWsMessageFromString(WsMessageText, "pong", time.Second),
 			},
 		},
 	}

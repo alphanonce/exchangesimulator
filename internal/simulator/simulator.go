@@ -135,5 +135,5 @@ func (s Simulator) simulateWsResponse(ctx context.Context, message WsMessage, co
 		return conn.Write(ctx, response)
 	}
 
-	return rule.Response(ctx, message, conn)
+	return rule.Handle(ctx, message, conn)
 }

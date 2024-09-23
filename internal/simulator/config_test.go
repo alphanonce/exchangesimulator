@@ -46,7 +46,7 @@ func TestConfig_GetHttpRule(t *testing.T) {
 func TestConfig_GetWsRule(t *testing.T) {
 	rule := WsRule{
 		MessageMatcher: NewWsMessagePredicate(WsMessageText, []byte("ping")),
-		Responder:      NewWsMessageFromString(WsMessageText, "pong", time.Second),
+		MessageHandler: NewWsMessageFromString(WsMessageText, "pong", time.Second),
 	}
 	config := Config{
 		WsRules: []WsRule{rule},

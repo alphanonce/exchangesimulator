@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// Ensure MessageFromString implements Responder
-var _ Responder = (*MessageFromString)(nil)
+// Ensure MessageFromString implements MessageHandler
+var _ MessageHandler = (*MessageFromString)(nil)
 
 type MessageFromString struct {
 	messageType  MessageType
@@ -22,7 +22,7 @@ func NewMessageFromString(messageType MessageType, data string, responseTime tim
 	}
 }
 
-func (r MessageFromString) Response(ctx context.Context, _ Message, conn Connection) error {
+func (r MessageFromString) Handle(ctx context.Context, _ Message, conn Connection) error {
 	message := Message{
 		Type: r.messageType,
 		Data: r.data,

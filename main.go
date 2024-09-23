@@ -31,11 +31,11 @@ func main() {
 		WsRules: []simulator.WsRule{
 			{
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping\n")),
-				Responder:      simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
 			},
 			{
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
-				Responder:      simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
 			},
 		},
 	}

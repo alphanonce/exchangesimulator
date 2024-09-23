@@ -4,13 +4,13 @@ import "context"
 
 type Rule struct {
 	MessageMatcher
-	Responder
+	MessageHandler
 }
 
 type MessageMatcher interface {
 	MatchMessage(Message) bool
 }
 
-type Responder interface {
-	Response(context.Context, Message, Connection) error
+type MessageHandler interface {
+	Handle(context.Context, Message, Connection) error
 }

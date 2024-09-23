@@ -34,7 +34,7 @@ func TestIntegration(t *testing.T) {
 		WsRules: []simulator.WsRule{
 			{
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping")),
-				Responder:      simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 50*time.Millisecond),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 50*time.Millisecond),
 			},
 		},
 	}
