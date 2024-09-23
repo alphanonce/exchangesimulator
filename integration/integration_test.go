@@ -141,35 +141,39 @@ func runWsTests(t *testing.T, config simulator.Config) {
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	t.Run("WebSocket Ping-Pong", func(t *testing.T) {
-		start := time.Now()
+		for i := 0; i < 3; i++ {
+			start := time.Now()
 
-		err := conn.Write(ctx, websocket.MessageText, []byte("ping"))
-		require.NoError(t, err)
+			err := conn.Write(ctx, websocket.MessageText, []byte("ping"))
+			require.NoError(t, err)
 
-		msgType, msg, err := conn.Read(ctx)
-		require.NoError(t, err)
+			msgType, msg, err := conn.Read(ctx)
+			require.NoError(t, err)
 
-		duration := time.Since(start)
+			duration := time.Since(start)
 
-		assert.Equal(t, websocket.MessageText, msgType)
-		assert.Equal(t, "pong", string(msg))
-		assert.GreaterOrEqual(t, duration, 50*time.Millisecond)
-		assert.Less(t, duration, 100*time.Millisecond) // Allow for some overhead
+			assert.Equal(t, websocket.MessageText, msgType)
+			assert.Equal(t, "pong", string(msg))
+			assert.GreaterOrEqual(t, duration, 50*time.Millisecond)
+			assert.Less(t, duration, 100*time.Millisecond) // Allow for some overhead
+		}
 	})
 
 	t.Run("WebSocket Unmatched Message", func(t *testing.T) {
-		start := time.Now()
+		for i := 0; i < 3; i++ {
+			start := time.Now()
 
-		err := conn.Write(ctx, websocket.MessageText, []byte("hello"))
-		require.NoError(t, err)
+			err := conn.Write(ctx, websocket.MessageText, []byte("hello"))
+			require.NoError(t, err)
 
-		msgType, msg, err := conn.Read(ctx)
-		require.NoError(t, err)
+			msgType, msg, err := conn.Read(ctx)
+			require.NoError(t, err)
 
-		duration := time.Since(start)
+			duration := time.Since(start)
 
-		assert.Equal(t, websocket.MessageText, msgType)
-		assert.Equal(t, "Invalid message", string(msg))
-		assert.Less(t, duration, 50*time.Millisecond) // Should be quick as it's not matched
+			assert.Equal(t, websocket.MessageText, msgType)
+			assert.Equal(t, "Invalid message", string(msg))
+			assert.Less(t, duration, 50*time.Millisecond) // Should be quick as it's not matched
+		}
 	})
 }
