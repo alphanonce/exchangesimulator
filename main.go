@@ -4,10 +4,6 @@ import (
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
-	"alphanonce.com/exchangesimulator/internal/rule"
-	"alphanonce.com/exchangesimulator/internal/rule/request_matcher"
-	"alphanonce.com/exchangesimulator/internal/rule/responder"
-	"alphanonce.com/exchangesimulator/internal/server"
 	"alphanonce.com/exchangesimulator/internal/simulator"
 )
 
@@ -18,22 +14,35 @@ func init() {
 }
 
 func main() {
-	rules := []rule.Rule{
-		{
-			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/api/v4/public/platform/status"),
-			Responder:      responder.NewResponseFromString(200, `{"status":"1"}`, time.Second),
+	config := simulator.Config{
+		ServerAddress: "localhost:8080",
+		HttpBasePath:  "/api",
+		HttpRules: []simulator.HttpRule{
+			{
+				RequestMatcher: simulator.NewHttpRequestPredicate("GET", "/v4/public/platform/status"),
+				Responder:      simulator.NewHttpResponseFromString(200, `{"status":"1"}`, time.Second),
+			},
+			{
+				RequestMatcher: simulator.NewHttpRequestPredicate("GET", "/v4/public/ping"),
+				Responder:      simulator.NewHttpResponseFromString(200, `["pong"]`, time.Second),
+			},
 		},
-		{
-			RequestMatcher: request_matcher.NewRequestPredicate("GET", "/api/v4/public/ping"),
-			Responder:      responder.NewResponseFromString(200, `["pong"]`, time.Second),
+		WsEndpoint: "/ws",
+		WsRules: []simulator.WsRule{
+			{
+				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping\n")),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
+			},
+			{
+				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
+			},
 		},
 	}
-	s := simulator.NewRuleBasedSimulator(rules)
-	sv := server.NewFasthttpServer(s)
-	address := "localhost:8080"
+	sim := simulator.New(config)
 
-	logger.Info("Server is starting", log.String("address", address))
-	err := sv.Run(address)
+	logger.Info("Server is starting", log.String("address", config.ServerAddress))
+	err := sim.Run()
 	if err != nil {
 		logger.Error("Server encountered an error while running", log.Any("error", err))
 		return

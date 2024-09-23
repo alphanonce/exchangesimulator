@@ -1,10 +1,8 @@
-package responder
+package http
 
 import (
 	"testing"
 	"time"
-
-	"alphanonce.com/exchangesimulator/internal/types"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -16,15 +14,15 @@ func TestNewResponseFromString(t *testing.T) {
 
 	r := NewResponseFromString(statusCode, body, responseTime)
 
-	assert.Equal(t, statusCode, r.Response(types.Request{}).StatusCode)
-	assert.Equal(t, []byte(body), r.Response(types.Request{}).Body)
+	assert.Equal(t, statusCode, r.Response(Request{}).StatusCode)
+	assert.Equal(t, []byte(body), r.Response(Request{}).Body)
 	assert.Equal(t, responseTime, r.ResponseTime())
 }
 
 func TestResponseFromString_Response(t *testing.T) {
 	r := NewResponseFromString(201, `{"status": "created"}`, 50*time.Millisecond)
 
-	response := r.Response(types.Request{})
+	response := r.Response(Request{})
 
 	assert.Equal(t, 201, response.StatusCode)
 	assert.Equal(t, []byte(`{"status": "created"}`), response.Body)

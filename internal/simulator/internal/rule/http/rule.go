@@ -1,9 +1,7 @@
-package rule
+package http
 
 import (
 	"time"
-
-	"alphanonce.com/exchangesimulator/internal/types"
 )
 
 type Rule struct {
@@ -12,10 +10,10 @@ type Rule struct {
 }
 
 type RequestMatcher interface {
-	MatchRequest(types.Request) bool
+	MatchRequest(Request) bool
 }
 
 type Responder interface {
-	Response(types.Request) types.Response
+	Response(Request) Response
 	ResponseTime() time.Duration
 }
