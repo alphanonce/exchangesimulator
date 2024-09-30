@@ -18,6 +18,6 @@ func NewMessagePredicate(messageType MessageType, data []byte) MessagePredicate 
 }
 
 func (p MessagePredicate) MatchMessage(message Message) bool {
-	return (p.messageType == MessageInvalid || message.Type == p.messageType) &&
+	return (p.messageType == MessageAny || message.Type == p.messageType) &&
 		(p.data == nil || slices.Equal(message.Data, p.data))
 }

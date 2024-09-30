@@ -2,11 +2,14 @@ package simulator
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -79,45 +82,82 @@ func TestSimulator_simulateWsResponse(t *testing.T) {
 				MessageMatcher: NewWsMessagePredicate(WsMessageText, []byte("ping")),
 				MessageHandler: NewWsMessageFromString(WsMessageText, "pong", time.Second),
 			},
+			{
+				MessageMatcher: NewWsMessagePredicate(WsMessageBinary, []byte("redirect")),
+				MessageHandler: NewWsRedirectHandler(),
+			},
 		},
 	}
 	sim := New(config)
 
 	tests := []struct {
-		name            string
-		message         WsMessage
-		expectedMessage WsMessage
-		expectedDelay   time.Duration
+		name                  string
+		message               WsMessage
+		expectedMessageClient WsMessage
+		expectedMessageServer WsMessage
+		expectedDelay         time.Duration
 	}{
 		{
-			name:            "Matching message",
-			message:         WsMessage{Type: WsMessageText, Data: []byte("ping")},
-			expectedMessage: WsMessage{Type: WsMessageText, Data: []byte("pong")},
-			expectedDelay:   time.Second,
+			name:                  "Matching message",
+			message:               WsMessage{Type: WsMessageText, Data: []byte("ping")},
+			expectedMessageClient: WsMessage{Type: WsMessageText, Data: []byte("pong")},
+			expectedDelay:         time.Second,
 		},
 		{
-			name:            "Non-matching message",
-			message:         WsMessage{Type: WsMessageText, Data: []byte("hello")},
-			expectedMessage: WsMessage{Type: WsMessageText, Data: []byte("Invalid message")},
-			expectedDelay:   0,
+			name:                  "Non-matching message",
+			message:               WsMessage{Type: WsMessageText, Data: []byte("hello")},
+			expectedMessageClient: WsMessage{Type: WsMessageText, Data: []byte("Invalid message")},
+			expectedDelay:         0,
+		},
+		{
+			name:                  "Redirect message",
+			message:               WsMessage{Type: WsMessageBinary, Data: []byte("redirect")},
+			expectedMessageServer: WsMessage{Type: WsMessageBinary, Data: []byte("redirect")},
+			expectedDelay:         0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockConn := new(ws.MockConnection)
 
-			mockConn.On("Write", ctx, tt.expectedMessage).Return(nil)
+			mockConnClient := new(ws.MockConnection)
+			mockConnClient.On("Write", ctx, tt.expectedMessageClient).Maybe().Return(nil)
+			mockConnServer := new(ws.MockConnection)
+			mockConnServer.On("Write", ctx, tt.expectedMessageServer).Maybe().Return(nil)
 
 			start := time.Now()
-			err := sim.simulateWsResponse(ctx, tt.message, mockConn)
+			err := sim.simulateWsResponse(ctx, tt.message, mockConnClient, mockConnServer)
 			delay := time.Since(start)
 
 			assert.NoError(t, err)
-			mockConn.AssertExpectations(t)
+			mockConnClient.AssertExpectations(t)
+			mockConnServer.AssertExpectations(t)
 
 			assert.GreaterOrEqual(t, delay, tt.expectedDelay)
 		})
 	}
+}
+
+func TestSimulator_saveMessageToFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "ws_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	sim := New(Config{WsRecordDir: tempDir})
+	message := WsMessage{
+		Type: WsMessageText,
+		Data: []byte("test message"),
+	}
+
+	err = sim.saveMessageToFile(message, tempDir)
+	assert.NoError(t, err)
+
+	files, err := os.ReadDir(tempDir)
+	assert.NoError(t, err)
+	assert.Len(t, files, 1)
+
+	content, err := os.ReadFile(filepath.Join(tempDir, files[0].Name()))
+	assert.NoError(t, err)
+	assert.Equal(t, message.Data, content)
 }

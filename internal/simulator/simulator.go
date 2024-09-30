@@ -2,8 +2,11 @@ package simulator
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,9 +31,9 @@ func (s Simulator) Run() error {
 
 func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
 	requestPath := string(r.URL.Path)
-	if strings.HasPrefix(requestPath, s.config.HttpBasePath) {
+	if s.config.HttpBasePath != "" && strings.HasPrefix(requestPath, s.config.HttpBasePath) {
 		s.httpRequestHandler(w, r)
-	} else if requestPath == s.config.WsEndpoint {
+	} else if s.config.WsEndpoint != "" && requestPath == s.config.WsEndpoint {
 		s.wsRequestHandler(w, r)
 	} else {
 		http.Error(w, "Invalid endpoint", http.StatusNotFound)
@@ -97,43 +100,109 @@ func convertHttpResponse(w http.ResponseWriter, response HttpResponse) {
 }
 
 func (s Simulator) wsRequestHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		logger.Error("Error upgrading to WebSocket", log.Any("error", err))
+		http.Error(w, "Failed to upgrade to WebSocket", http.StatusInternalServerError)
 		return
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "defer close")
-
+	defer conn.Close(websocket.StatusNormalClosure, "")
 	logger.Info("Succeeded upgrading to WebSocket")
+	connClient := wrapConnection(conn)
 
-	s.handleWsConnection(r.Context(), wrapConnection(conn))
-}
-
-func (s Simulator) handleWsConnection(ctx context.Context, conn WsConnection) {
-	for {
-		incomingMsg, err := conn.Read(ctx)
+	var connServer WsConnection
+	if s.config.WsRedirectUrl != "" {
+		conn, _, err := websocket.Dial(ctx, s.config.WsRedirectUrl, nil)
 		if err != nil {
-			logger.Error("Error reading WebSocket message", log.Any("error", err))
+			logger.Error("Error connecting to WebSocket server", log.String("url", s.config.WsRedirectUrl), log.Any("error", err))
+			http.Error(w, "Failed to connect to WebSocket server", http.StatusInternalServerError)
 			return
 		}
+		defer conn.Close(websocket.StatusNormalClosure, "")
+		logger.Info("Succeeded connecting to WebSocket", log.String("url", s.config.WsRedirectUrl))
+		connServer = wrapConnection(conn)
 
-		err = s.simulateWsResponse(ctx, incomingMsg, conn)
+		go func() {
+			err := s.redirectWsMessageFromServerToClient(ctx, connClient, connServer)
+			if err != nil {
+				logger.Error("Error redirecting messages from server", log.Any("error", err))
+				cancel()
+			}
+		}()
+	}
+
+	err = s.handleWsConnection(ctx, connClient, connServer)
+	if err != nil {
+		logger.Error("Error handling websocket messages", log.Any("error", err))
+		return
+	}
+}
+
+func (s Simulator) redirectWsMessageFromServerToClient(ctx context.Context, connClient WsConnection, connServer WsConnection) error {
+	for {
+		message, err := connServer.Read(ctx)
 		if err != nil {
-			logger.Error("Error while handling WebSocket message", log.Any("error", err))
-			return
+			return fmt.Errorf("failed to read from server: %w", err)
+		}
+
+		if s.config.WsRecordDir != "" {
+			err = s.saveMessageToFile(message, s.config.WsRecordDir)
+			if err != nil {
+				return fmt.Errorf("failed to save to a file: %w", err)
+			}
+		}
+
+		err = connClient.Write(ctx, message)
+		if err != nil {
+			return fmt.Errorf("failed to write to client: %w", err)
 		}
 	}
 }
 
-func (s Simulator) simulateWsResponse(ctx context.Context, message WsMessage, conn WsConnection) error {
+func (s Simulator) saveMessageToFile(message WsMessage, dir string) error {
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return err
+	}
+
+	filename := "ws_" + time.Now().Format(time.RFC3339Nano)
+	path := filepath.Join(dir, filename)
+
+	err = os.WriteFile(path, message.Data, 0644)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("WebSocket message recorded", log.Any("path", path))
+	return nil
+}
+
+func (s Simulator) handleWsConnection(ctx context.Context, connClient WsConnection, connServer WsConnection) error {
+	for {
+		incomingMsg, err := connClient.Read(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to read message: %w", err)
+		}
+
+		err = s.simulateWsResponse(ctx, incomingMsg, connClient, connServer)
+		if err != nil {
+			return fmt.Errorf("failed to handle message: %w", err)
+		}
+	}
+}
+
+func (s Simulator) simulateWsResponse(ctx context.Context, message WsMessage, connClient WsConnection, connServer WsConnection) error {
 	rule, ok := s.config.GetWsRule(message)
 	if !ok {
 		response := WsMessage{
 			Type: WsMessageText,
 			Data: []byte("Invalid message"),
 		}
-		return conn.Write(ctx, response)
+		return connClient.Write(ctx, response)
 	}
 
-	return rule.Handle(ctx, message, conn)
+	return rule.Handle(ctx, message, connClient, connServer)
 }

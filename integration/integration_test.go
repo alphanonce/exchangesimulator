@@ -4,6 +4,9 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +18,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func echo(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	for {
+		incomingType, incomingData, err := conn.Read(ctx)
+		if err != nil {
+			return
+		}
+
+		outgoingType := incomingType
+		outgoingData := append([]byte("echoed: "), incomingData...)
+
+		err = conn.Write(ctx, outgoingType, outgoingData)
+		if err != nil {
+			return
+		}
+	}
+}
+
 func TestIntegration(t *testing.T) {
+	// Start a mock WebSocket server
+	mockServer := httptest.NewServer(http.HandlerFunc(echo))
+	defer mockServer.Close()
+	mockServerURL := "ws" + strings.TrimPrefix(mockServer.URL, "http")
+
+	// Create a temporary directory for saving messages
+	tempDir := t.TempDir()
+
 	// Define the configuration for the simulator
 	config := simulator.Config{
 		ServerAddress: "localhost:8081",
@@ -36,7 +73,13 @@ func TestIntegration(t *testing.T) {
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping")),
 				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 50*time.Millisecond),
 			},
+			{
+				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
+				MessageHandler: simulator.NewWsRedirectHandler(),
+			},
 		},
+		WsRedirectUrl: mockServerURL,
+		WsRecordDir:   tempDir,
 	}
 
 	// Create a simulator
@@ -133,47 +176,83 @@ func runHttpTests(t *testing.T, config simulator.Config) {
 }
 
 func runWsTests(t *testing.T, config simulator.Config) {
-	ctx := context.Background()
-	wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+	tests := []struct {
+		name            string
+		msgType         websocket.MessageType
+		msgData         []byte
+		expectedMsgType websocket.MessageType
+		expectedMsgData []byte
+		expectedDelay   time.Duration
+		checkFile       bool
+	}{
+		{
+			name:            "WebSocket Ping-Pong",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("ping"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte("pong"),
+			expectedDelay:   50 * time.Millisecond,
+			checkFile:       false,
+		},
+		{
+			name:            "WebSocket Unmatched Message",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("hello"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte("Invalid message"),
+			expectedDelay:   0,
+			checkFile:       false,
+		},
+		{
+			name:            "WebSocket Redirect Message",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("redirect"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte("echoed: redirect"),
+			expectedDelay:   0,
+			checkFile:       true,
+		},
+	}
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
-	require.NoError(t, err)
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
 
-	t.Run("WebSocket Ping-Pong", func(t *testing.T) {
-		for i := 0; i < 3; i++ {
-			start := time.Now()
-
-			err := conn.Write(ctx, websocket.MessageText, []byte("ping"))
+			conn, _, err := websocket.Dial(ctx, wsURL, nil)
 			require.NoError(t, err)
+			defer conn.Close(websocket.StatusNormalClosure, "")
 
-			msgType, msg, err := conn.Read(ctx)
-			require.NoError(t, err)
+			for i := 0; i < 3; i++ {
+				start := time.Now()
 
-			duration := time.Since(start)
+				err := conn.Write(ctx, tt.msgType, tt.msgData)
+				require.NoError(t, err)
 
-			assert.Equal(t, websocket.MessageText, msgType)
-			assert.Equal(t, "pong", string(msg))
-			assert.GreaterOrEqual(t, duration, 50*time.Millisecond)
-			assert.Less(t, duration, 100*time.Millisecond) // Allow for some overhead
-		}
-	})
+				msgType, msgData, err := conn.Read(ctx)
+				require.NoError(t, err)
 
-	t.Run("WebSocket Unmatched Message", func(t *testing.T) {
-		for i := 0; i < 3; i++ {
-			start := time.Now()
+				duration := time.Since(start)
 
-			err := conn.Write(ctx, websocket.MessageText, []byte("hello"))
-			require.NoError(t, err)
+				assert.Equal(t, tt.expectedMsgType, msgType)
+				assert.Equal(t, tt.expectedMsgData, msgData)
+				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
 
-			msgType, msg, err := conn.Read(ctx)
-			require.NoError(t, err)
+				if tt.checkFile {
+					files, err := os.ReadDir(config.WsRecordDir)
+					require.NoError(t, err)
+					assert.Len(t, files, 1)
 
-			duration := time.Since(start)
+					content, err := os.ReadFile(filepath.Join(config.WsRecordDir, files[0].Name()))
+					assert.NoError(t, err)
+					assert.Equal(t, tt.expectedMsgData, content)
 
-			assert.Equal(t, websocket.MessageText, msgType)
-			assert.Equal(t, "Invalid message", string(msg))
-			assert.Less(t, duration, 50*time.Millisecond) // Should be quick as it's not matched
-		}
-	})
+					err = os.Remove(filepath.Join(config.WsRecordDir, files[0].Name()))
+					require.NoError(t, err)
+				}
+			}
+		})
+	}
 }

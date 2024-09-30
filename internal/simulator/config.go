@@ -12,6 +12,8 @@ type Config struct {
 	HttpRules     []HttpRule
 	WsEndpoint    string
 	WsRules       []WsRule
+	WsRedirectUrl string
+	WsRecordDir   string
 }
 
 func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {

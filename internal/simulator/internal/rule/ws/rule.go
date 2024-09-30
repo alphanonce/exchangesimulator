@@ -12,5 +12,5 @@ type MessageMatcher interface {
 }
 
 type MessageHandler interface {
-	Handle(context.Context, Message, Connection) error
+	Handle(context.Context, Message, Connection, Connection) error
 }

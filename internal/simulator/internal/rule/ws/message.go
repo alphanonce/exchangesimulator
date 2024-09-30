@@ -1,14 +1,14 @@
 package ws
 
-type MessageType int
+type MessageType uint8
 
 const (
-	MessageInvalid MessageType = iota
-	MessageText
-	MessageBinary
+	MessageAny    MessageType = 0
+	MessageText   MessageType = 1
+	MessageBinary MessageType = 2
 )
 
 type Message struct {
-	Type MessageType
-	Data []byte
+	Type MessageType `json:"type"`
+	Data []byte      `json:"data"`
 }

@@ -22,12 +22,12 @@ func NewMessageFromString(messageType MessageType, data string, responseTime tim
 	}
 }
 
-func (r MessageFromString) Handle(ctx context.Context, _ Message, conn Connection) error {
+func (r MessageFromString) Handle(ctx context.Context, _ Message, connClient Connection, _ Connection) error {
 	message := Message{
 		Type: r.messageType,
 		Data: r.data,
 	}
 	time.Sleep(r.responseTime)
-	err := conn.Write(ctx, message)
+	err := connClient.Write(ctx, message)
 	return err
 }

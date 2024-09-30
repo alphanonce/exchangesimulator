@@ -12,6 +12,7 @@ type WsMessage = ws.Message
 type WsMessageType = ws.MessageType
 
 const (
+	WsMessageAny    = ws.MessageAny
 	WsMessageText   = ws.MessageText
 	WsMessageBinary = ws.MessageBinary
 )
@@ -22,4 +23,8 @@ func NewWsMessagePredicate(messageType WsMessageType, data []byte) ws.MessagePre
 
 func NewWsMessageFromString(messageType WsMessageType, data string, responseTime time.Duration) ws.MessageFromString {
 	return ws.NewMessageFromString(messageType, data, responseTime)
+}
+
+func NewWsRedirectHandler() ws.RedirectHandler {
+	return ws.NewRedirectHandler()
 }

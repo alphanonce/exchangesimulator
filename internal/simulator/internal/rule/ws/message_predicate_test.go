@@ -43,7 +43,7 @@ func TestMessagePredicate_MatchMessage(t *testing.T) {
 		},
 		{
 			name:      "Any type, data match",
-			predicate: NewMessagePredicate(MessageInvalid, []byte("hello")),
+			predicate: NewMessagePredicate(MessageAny, []byte("hello")),
 			message:   Message{Type: MessageText, Data: []byte("hello")},
 			expected:  true,
 		},

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
@@ -37,7 +38,13 @@ func main() {
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
 				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
 			},
+			{
+				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),
+				MessageHandler: simulator.NewWsRedirectHandler(),
+			},
 		},
+		WsRedirectUrl: "wss://api.whitebit.com/ws",
+		WsRecordDir:   filepath.Join("records", "ws"),
 	}
 	sim := simulator.New(config)
 
