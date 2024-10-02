@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
+	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
 
 	"github.com/coder/websocket"
 )
@@ -171,7 +172,7 @@ func (s Simulator) saveMessageToFile(message WsMessage, dir string) error {
 	filename := "ws_" + time.Now().Format(time.RFC3339Nano)
 	path := filepath.Join(dir, filename)
 
-	err = os.WriteFile(path, message.Data, 0644)
+	err = ws.WriteToFile(path, message)
 	if err != nil {
 		return err
 	}

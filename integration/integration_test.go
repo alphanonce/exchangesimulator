@@ -178,40 +178,40 @@ func runHttpTests(t *testing.T, config simulator.Config) {
 
 func runWsTests(t *testing.T, config simulator.Config) {
 	tests := []struct {
-		name            string
-		msgType         websocket.MessageType
-		msgData         []byte
-		expectedMsgType websocket.MessageType
-		expectedMsgData []byte
-		expectedDelay   time.Duration
-		checkFile       bool
+		name                string
+		msgType             websocket.MessageType
+		msgData             []byte
+		expectedMsgType     websocket.MessageType
+		expectedMsgData     []byte
+		expectedDelay       time.Duration
+		expectedFileContent []byte
 	}{
 		{
-			name:            "WebSocket Ping-Pong",
-			msgType:         websocket.MessageText,
-			msgData:         []byte("ping"),
-			expectedMsgType: websocket.MessageText,
-			expectedMsgData: []byte("pong"),
-			expectedDelay:   50 * time.Millisecond,
-			checkFile:       false,
+			name:                "WebSocket Ping-Pong",
+			msgType:             websocket.MessageText,
+			msgData:             []byte("ping"),
+			expectedMsgType:     websocket.MessageText,
+			expectedMsgData:     []byte("pong"),
+			expectedDelay:       50 * time.Millisecond,
+			expectedFileContent: nil,
 		},
 		{
-			name:            "WebSocket Unmatched Message",
-			msgType:         websocket.MessageText,
-			msgData:         []byte("hello"),
-			expectedMsgType: websocket.MessageText,
-			expectedMsgData: []byte("Invalid message"),
-			expectedDelay:   0,
-			checkFile:       false,
+			name:                "WebSocket Unmatched Message",
+			msgType:             websocket.MessageText,
+			msgData:             []byte("hello"),
+			expectedMsgType:     websocket.MessageText,
+			expectedMsgData:     []byte("Invalid message"),
+			expectedDelay:       0,
+			expectedFileContent: nil,
 		},
 		{
-			name:            "WebSocket Redirect Message",
-			msgType:         websocket.MessageText,
-			msgData:         []byte("redirect"),
-			expectedMsgType: websocket.MessageText,
-			expectedMsgData: []byte("echoed: redirect"),
-			expectedDelay:   0,
-			checkFile:       true,
+			name:                "WebSocket Redirect Message",
+			msgType:             websocket.MessageText,
+			msgData:             []byte("redirect"),
+			expectedMsgType:     websocket.MessageText,
+			expectedMsgData:     []byte("echoed: redirect"),
+			expectedDelay:       0,
+			expectedFileContent: []byte(`{"type":1,"data":"echoed: redirect"}`),
 		},
 	}
 
@@ -241,14 +241,14 @@ func runWsTests(t *testing.T, config simulator.Config) {
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
 
-				if tt.checkFile {
+				if tt.expectedFileContent != nil {
 					files, err := os.ReadDir(config.WsRecordDir)
 					require.NoError(t, err)
 					assert.Len(t, files, 1)
 
 					content, err := os.ReadFile(filepath.Join(config.WsRecordDir, files[0].Name()))
 					assert.NoError(t, err)
-					assert.Equal(t, tt.expectedMsgData, content)
+					assert.Equal(t, tt.expectedFileContent, content)
 
 					err = os.Remove(filepath.Join(config.WsRecordDir, files[0].Name()))
 					require.NoError(t, err)

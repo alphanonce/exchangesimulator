@@ -140,24 +140,46 @@ func TestSimulator_simulateWsResponse(t *testing.T) {
 }
 
 func TestSimulator_saveMessageToFile(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "ws_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
-	sim := New(Config{WsRecordDir: tempDir})
-	message := WsMessage{
-		Type: WsMessageText,
-		Data: []byte("test message"),
+	tests := []struct {
+		name            string
+		message         WsMessage
+		expectedContent []byte
+	}{
+		{
+			name:            "Text message",
+			message:         WsMessage{Type: WsMessageText, Data: []byte("Hello, World!")},
+			expectedContent: []byte(`{"type":1,"data":"Hello, World!"}`),
+		},
+		{
+			name:            "Binary message",
+			message:         WsMessage{Type: WsMessageBinary, Data: []byte{0x01, 0x02, 0x03, 0x04}},
+			expectedContent: []byte(`{"type":2,"data":"01020304"}`),
+		},
+		{
+			name:            "Any message",
+			message:         WsMessage{Type: WsMessageAny, Data: []byte{0x01, 0x02, 0x03, 0x04}},
+			expectedContent: []byte(`{"type":0,"data":"01020304"}`),
+		},
 	}
 
-	err = sim.saveMessageToFile(message, tempDir)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir, err := os.MkdirTemp("", "ws_test")
+			require.NoError(t, err)
+			defer os.RemoveAll(tempDir)
 
-	files, err := os.ReadDir(tempDir)
-	assert.NoError(t, err)
-	assert.Len(t, files, 1)
+			sim := New(Config{WsRecordDir: tempDir})
 
-	content, err := os.ReadFile(filepath.Join(tempDir, files[0].Name()))
-	assert.NoError(t, err)
-	assert.Equal(t, message.Data, content)
+			err = sim.saveMessageToFile(tt.message, tempDir)
+			assert.NoError(t, err)
+
+			files, err := os.ReadDir(tempDir)
+			assert.NoError(t, err)
+			assert.Len(t, files, 1)
+
+			content, err := os.ReadFile(filepath.Join(tempDir, files[0].Name()))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedContent, content)
+		})
+	}
 }
