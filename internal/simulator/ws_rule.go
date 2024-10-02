@@ -21,6 +21,10 @@ func NewWsMessagePredicate(messageType WsMessageType, data []byte) ws.MessagePre
 	return ws.NewMessagePredicate(messageType, data)
 }
 
+func NewWsJsonMatcher(jsonString string) ws.JsonMessageMatcher {
+	return ws.NewJsonMessageMatcher(jsonString)
+}
+
 func NewWsMessageFromString(messageType WsMessageType, data string, responseTime time.Duration) ws.MessageFromString {
 	return ws.NewMessageFromString(messageType, data, responseTime)
 }

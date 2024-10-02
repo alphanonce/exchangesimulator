@@ -39,6 +39,10 @@ func main() {
 				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
 			},
 			{
+				MessageMatcher: simulator.NewWsJsonMatcher(`{ "id": 1, "method": "depth_request", "params": [ "ETH_BTC", 100,  "0" ] }`),
+				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "TODO", 0),
+			},
+			{
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),
 				MessageHandler: simulator.NewWsRedirectHandler(),
 			},

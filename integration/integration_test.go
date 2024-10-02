@@ -73,6 +73,7 @@ func TestIntegration(t *testing.T) {
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping")),
 				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 50*time.Millisecond),
 			},
+			// TODO: add a WsRule with JsonMessageMatcher and MessageFromFiles
 			{
 				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
 				MessageHandler: simulator.NewWsRedirectHandler(),
