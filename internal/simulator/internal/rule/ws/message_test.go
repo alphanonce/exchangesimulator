@@ -12,17 +12,17 @@ func TestWriteToFile(t *testing.T) {
 	tests := []struct {
 		name            string
 		message         Message
-		expectedContent []byte
+		expectedContent string
 	}{
 		{
 			name:            "Text message",
 			message:         Message{Type: MessageText, Data: []byte("Hello, World!")},
-			expectedContent: []byte(`{"type":1,"data":"Hello, World!"}`),
+			expectedContent: "type: text\ndata: |-\n    Hello, World!\n",
 		},
 		{
 			name:            "Binary message",
 			message:         Message{Type: MessageBinary, Data: []byte{0x01, 0x02, 0x03, 0x04}},
-			expectedContent: []byte(`{"type":2,"data":"01020304"}`),
+			expectedContent: "type: binary\ndata: |-\n    01020304\n",
 		},
 	}
 
@@ -37,7 +37,7 @@ func TestWriteToFile(t *testing.T) {
 
 			content, err := os.ReadFile(tempFile.Name())
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedContent, content)
+			assert.Equal(t, tt.expectedContent, string(content))
 		})
 	}
 }
@@ -51,25 +51,25 @@ func TestReadFromFile(t *testing.T) {
 	}{
 		{
 			name:            "Valid text message",
-			content:         `{"type":1,"data":"Hello, World!"}`,
+			content:         "type: text\ndata: |-\n    Hello, World!\n",
 			expectedMessage: Message{Type: MessageText, Data: []byte("Hello, World!")},
 			wantErr:         false,
 		},
 		{
 			name:            "Valid binary message",
-			content:         `{"type":2,"data":"01020304"}`,
+			content:         "type: binary\ndata: |-\n    01020304\n",
 			expectedMessage: Message{Type: MessageBinary, Data: []byte{0x01, 0x02, 0x03, 0x04}},
 			wantErr:         false,
 		},
 		{
-			name:            "Invalid JSON",
-			content:         `{"type":1,"data":"Hello, World!"`,
+			name:            "Invalid YAML",
+			content:         "key: value\n",
 			expectedMessage: Message{},
 			wantErr:         true,
 		},
 		{
 			name:            "Invalid hex in binary message",
-			content:         `{"type":2,"data":"0102030G"}`,
+			content:         "type: binary\ndata: |-\n    0102030G\n",
 			expectedMessage: Message{},
 			wantErr:         true,
 		},

@@ -169,7 +169,7 @@ func (s Simulator) saveMessageToFile(message WsMessage, dir string) error {
 		return err
 	}
 
-	filename := "ws_" + time.Now().Format(time.RFC3339Nano)
+	filename := time.Now().Format(time.RFC3339Nano) + ".yaml"
 	path := filepath.Join(dir, filename)
 
 	err = ws.WriteToFile(path, message)

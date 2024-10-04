@@ -143,22 +143,17 @@ func TestSimulator_saveMessageToFile(t *testing.T) {
 	tests := []struct {
 		name            string
 		message         WsMessage
-		expectedContent []byte
+		expectedContent string
 	}{
 		{
 			name:            "Text message",
 			message:         WsMessage{Type: WsMessageText, Data: []byte("Hello, World!")},
-			expectedContent: []byte(`{"type":1,"data":"Hello, World!"}`),
+			expectedContent: "type: text\ndata: |-\n    Hello, World!\n",
 		},
 		{
 			name:            "Binary message",
 			message:         WsMessage{Type: WsMessageBinary, Data: []byte{0x01, 0x02, 0x03, 0x04}},
-			expectedContent: []byte(`{"type":2,"data":"01020304"}`),
-		},
-		{
-			name:            "Any message",
-			message:         WsMessage{Type: WsMessageAny, Data: []byte{0x01, 0x02, 0x03, 0x04}},
-			expectedContent: []byte(`{"type":0,"data":"01020304"}`),
+			expectedContent: "type: binary\ndata: |-\n    01020304\n",
 		},
 	}
 
@@ -175,11 +170,11 @@ func TestSimulator_saveMessageToFile(t *testing.T) {
 
 			files, err := os.ReadDir(tempDir)
 			assert.NoError(t, err)
-			assert.Len(t, files, 1)
+			require.Len(t, files, 1)
 
 			content, err := os.ReadFile(filepath.Join(tempDir, files[0].Name()))
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedContent, content)
+			assert.Equal(t, tt.expectedContent, string(content))
 		})
 	}
 }

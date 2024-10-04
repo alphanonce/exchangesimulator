@@ -184,7 +184,7 @@ func runWsTests(t *testing.T, config simulator.Config) {
 		expectedMsgType     websocket.MessageType
 		expectedMsgData     []byte
 		expectedDelay       time.Duration
-		expectedFileContent []byte
+		expectedFileContent string
 	}{
 		{
 			name:                "WebSocket Ping-Pong",
@@ -193,7 +193,6 @@ func runWsTests(t *testing.T, config simulator.Config) {
 			expectedMsgType:     websocket.MessageText,
 			expectedMsgData:     []byte("pong"),
 			expectedDelay:       50 * time.Millisecond,
-			expectedFileContent: nil,
 		},
 		{
 			name:                "WebSocket Unmatched Message",
@@ -202,7 +201,6 @@ func runWsTests(t *testing.T, config simulator.Config) {
 			expectedMsgType:     websocket.MessageText,
 			expectedMsgData:     []byte("Invalid message"),
 			expectedDelay:       0,
-			expectedFileContent: nil,
 		},
 		{
 			name:                "WebSocket Redirect Message",
@@ -211,7 +209,7 @@ func runWsTests(t *testing.T, config simulator.Config) {
 			expectedMsgType:     websocket.MessageText,
 			expectedMsgData:     []byte("echoed: redirect"),
 			expectedDelay:       0,
-			expectedFileContent: []byte(`{"type":1,"data":"echoed: redirect"}`),
+			expectedFileContent: "type: text\ndata: |-\n    echoed: redirect\n",
 		},
 	}
 
@@ -241,14 +239,14 @@ func runWsTests(t *testing.T, config simulator.Config) {
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
 
-				if tt.expectedFileContent != nil {
+				if tt.expectedFileContent != "" {
 					files, err := os.ReadDir(config.WsRecordDir)
 					require.NoError(t, err)
 					assert.Len(t, files, 1)
 
 					content, err := os.ReadFile(filepath.Join(config.WsRecordDir, files[0].Name()))
 					assert.NoError(t, err)
-					assert.Equal(t, tt.expectedFileContent, content)
+					assert.Equal(t, tt.expectedFileContent, string(content))
 
 					err = os.Remove(filepath.Join(config.WsRecordDir, files[0].Name()))
 					require.NoError(t, err)
