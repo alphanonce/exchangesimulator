@@ -69,15 +69,18 @@ func TestIntegration(t *testing.T) {
 		},
 		WsEndpoint: "/ws",
 		WsRules: []simulator.WsRule{
-			{
-				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping")),
-				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 50*time.Millisecond),
-			},
-			// TODO: add a WsRule with JsonMessageMatcher and MessageFromFiles
-			{
-				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
-				MessageHandler: simulator.NewWsRedirectHandler(),
-			},
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping")),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", 10*time.Millisecond),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsJsonMatcher(`{ "id": 1, "method": "time", "params": [] }`),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, `{ "id": 1, "result": 1493285895, "error": null }`, 5*time.Millisecond),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
+				simulator.NewWsRedirectHandler(),
+			),
 		},
 		WsRedirectUrl: mockServerURL,
 		WsRecordDir:   tempDir,
@@ -97,16 +100,16 @@ func TestIntegration(t *testing.T) {
 
 	// Run HTTP tests
 	t.Run("HTTP Tests", func(t *testing.T) {
-		runHttpTests(t, config)
+		testHttp(t, config)
 	})
 
 	// Run WebSocket tests
 	t.Run("WebSocket Tests", func(t *testing.T) {
-		runWsTests(t, config)
+		testWs(t, config)
 	})
 }
 
-func runHttpTests(t *testing.T, config simulator.Config) {
+func testHttp(t *testing.T, config simulator.Config) {
 	tests := []struct {
 		name           string
 		method         string
@@ -176,7 +179,71 @@ func runHttpTests(t *testing.T, config simulator.Config) {
 	}
 }
 
-func runWsTests(t *testing.T, config simulator.Config) {
+func testWs(t *testing.T, config simulator.Config) {
+	testWsBasicTest(t, config)
+	testWsMessageMatchers(t, config)
+	testWsRedirection(t, config)
+}
+
+func testWsBasicTest(t *testing.T, config simulator.Config) {
+	tests := []struct {
+		name            string
+		msgType         websocket.MessageType
+		msgData         []byte
+		expectedMsgType websocket.MessageType
+		expectedMsgData []byte
+		expectedDelay   time.Duration
+	}{
+		{
+			name:            "WebSocket basic test",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("ping"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte("pong"),
+			expectedDelay:   10 * time.Millisecond,
+		},
+		{
+			name:            "WebSocket unmatched message",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("hello"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte("Invalid message"),
+			expectedDelay:   0,
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+			conn, _, err := websocket.Dial(ctx, wsURL, nil)
+			require.NoError(t, err)
+			defer conn.Close(websocket.StatusNormalClosure, "")
+
+			for i := 0; i < 3; i++ {
+				start := time.Now()
+
+				err := conn.Write(ctx, tt.msgType, tt.msgData)
+				require.NoError(t, err)
+
+				msgType, msgData, err := conn.Read(ctx)
+				require.NoError(t, err)
+
+				duration := time.Since(start)
+
+				assert.Equal(t, tt.expectedMsgType, msgType)
+				assert.Equal(t, tt.expectedMsgData, msgData)
+				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
+			}
+		})
+	}
+}
+
+func testWsMessageMatchers(t *testing.T, config simulator.Config) {
 	tests := []struct {
 		name                string
 		msgType             websocket.MessageType
@@ -187,21 +254,56 @@ func runWsTests(t *testing.T, config simulator.Config) {
 		expectedFileContent string
 	}{
 		{
-			name:                "WebSocket Ping-Pong",
-			msgType:             websocket.MessageText,
-			msgData:             []byte("ping"),
-			expectedMsgType:     websocket.MessageText,
-			expectedMsgData:     []byte("pong"),
-			expectedDelay:       50 * time.Millisecond,
+			name:            "WebSocket JSON request",
+			msgType:         websocket.MessageText,
+			msgData:         []byte(`{ "method": "time", "params": [], "id": 1 }`),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: []byte(`{ "id": 1, "result": 1493285895, "error": null }`),
+			expectedDelay:   5 * time.Millisecond,
 		},
-		{
-			name:                "WebSocket Unmatched Message",
-			msgType:             websocket.MessageText,
-			msgData:             []byte("hello"),
-			expectedMsgType:     websocket.MessageText,
-			expectedMsgData:     []byte("Invalid message"),
-			expectedDelay:       0,
-		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+			conn, _, err := websocket.Dial(ctx, wsURL, nil)
+			require.NoError(t, err)
+			defer conn.Close(websocket.StatusNormalClosure, "")
+
+			for i := 0; i < 3; i++ {
+				start := time.Now()
+
+				err := conn.Write(ctx, tt.msgType, tt.msgData)
+				require.NoError(t, err)
+
+				msgType, msgData, err := conn.Read(ctx)
+				require.NoError(t, err)
+
+				duration := time.Since(start)
+
+				assert.Equal(t, tt.expectedMsgType, msgType)
+				assert.Equal(t, tt.expectedMsgData, msgData)
+				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
+			}
+		})
+	}
+}
+
+func testWsRedirection(t *testing.T, config simulator.Config) {
+	tests := []struct {
+		name                string
+		msgType             websocket.MessageType
+		msgData             []byte
+		expectedMsgType     websocket.MessageType
+		expectedMsgData     []byte
+		expectedDelay       time.Duration
+		expectedFileContent string
+	}{
 		{
 			name:                "WebSocket Redirect Message",
 			msgType:             websocket.MessageText,
@@ -216,9 +318,10 @@ func runWsTests(t *testing.T, config simulator.Config) {
 	// Run test cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
 
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
 			conn, _, err := websocket.Dial(ctx, wsURL, nil)
 			require.NoError(t, err)
 			defer conn.Close(websocket.StatusNormalClosure, "")
@@ -239,18 +342,16 @@ func runWsTests(t *testing.T, config simulator.Config) {
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
 
-				if tt.expectedFileContent != "" {
-					files, err := os.ReadDir(config.WsRecordDir)
-					require.NoError(t, err)
-					assert.Len(t, files, 1)
+				files, err := os.ReadDir(config.WsRecordDir)
+				require.NoError(t, err)
+				assert.Len(t, files, 1)
 
-					content, err := os.ReadFile(filepath.Join(config.WsRecordDir, files[0].Name()))
-					assert.NoError(t, err)
-					assert.Equal(t, tt.expectedFileContent, string(content))
+				content, err := os.ReadFile(filepath.Join(config.WsRecordDir, files[0].Name()))
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedFileContent, string(content))
 
-					err = os.Remove(filepath.Join(config.WsRecordDir, files[0].Name()))
-					require.NoError(t, err)
-				}
+				err = os.Remove(filepath.Join(config.WsRecordDir, files[0].Name()))
+				require.NoError(t, err)
 			}
 		})
 	}

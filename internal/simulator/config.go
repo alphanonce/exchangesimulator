@@ -35,7 +35,7 @@ func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {
 func (c *Config) GetWsRule(message WsMessage) (WsRule, bool) {
 	i := slices.IndexFunc(c.WsRules, func(r WsRule) bool { return r.MatchMessage(message) })
 	if i == -1 {
-		return WsRule{}, false
+		return nil, false
 	}
 
 	return c.WsRules[i], true

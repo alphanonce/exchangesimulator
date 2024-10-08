@@ -9,6 +9,7 @@ import (
 
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,20 +75,26 @@ func TestSimulator_simulateHttpResponse(t *testing.T) {
 }
 
 func TestSimulator_simulateWsResponse(t *testing.T) {
-	config := Config{
-		ServerAddress: "localhost:8080",
-		WsEndpoint:    "/ws",
-		WsRules: []WsRule{
-			{
-				MessageMatcher: NewWsMessagePredicate(WsMessageText, []byte("ping")),
-				MessageHandler: NewWsMessageFromString(WsMessageText, "pong", time.Second),
-			},
-			{
-				MessageMatcher: NewWsMessagePredicate(WsMessageBinary, []byte("redirect")),
-				MessageHandler: NewWsRedirectHandler(),
-			},
-		},
-	}
+	mockPingpongRule := ws.NewMockRule(t)
+	mockPingpongRule.On("MatchMessage", WsMessage{Type: WsMessageText, Data: []byte("ping")}).Return(true)
+	mockPingpongRule.On("MatchMessage", mock.Anything).Return(false)
+	mockPingpongRule.On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		connClient := args.Get(2).(WsConnection)
+		connClient.Write(ctx, WsMessage{Type: WsMessageText, Data: []byte("pong")})
+	}).Return(nil)
+
+	mockRedirectRule := ws.NewMockRule(t)
+	mockRedirectRule.On("MatchMessage", WsMessage{Type: WsMessageBinary, Data: []byte("redirect")}).Return(true)
+	mockRedirectRule.On("MatchMessage", mock.Anything).Return(false)
+	mockRedirectRule.On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		message := args.Get(1).(WsMessage)
+		connServer := args.Get(3).(WsConnection)
+		connServer.Write(ctx, message)
+	}).Return(nil)
+
+	config := Config{WsRules: []WsRule{mockPingpongRule, mockRedirectRule}}
 	sim := New(config)
 
 	tests := []struct {
@@ -95,25 +102,21 @@ func TestSimulator_simulateWsResponse(t *testing.T) {
 		message               WsMessage
 		expectedMessageClient WsMessage
 		expectedMessageServer WsMessage
-		expectedDelay         time.Duration
 	}{
 		{
-			name:                  "Matching message",
+			name:                  "Ping-pong message",
 			message:               WsMessage{Type: WsMessageText, Data: []byte("ping")},
 			expectedMessageClient: WsMessage{Type: WsMessageText, Data: []byte("pong")},
-			expectedDelay:         time.Second,
-		},
-		{
-			name:                  "Non-matching message",
-			message:               WsMessage{Type: WsMessageText, Data: []byte("hello")},
-			expectedMessageClient: WsMessage{Type: WsMessageText, Data: []byte("Invalid message")},
-			expectedDelay:         0,
 		},
 		{
 			name:                  "Redirect message",
 			message:               WsMessage{Type: WsMessageBinary, Data: []byte("redirect")},
 			expectedMessageServer: WsMessage{Type: WsMessageBinary, Data: []byte("redirect")},
-			expectedDelay:         0,
+		},
+		{
+			name:                  "Non-matching message",
+			message:               WsMessage{Type: WsMessageText, Data: []byte("hello")},
+			expectedMessageClient: WsMessage{Type: WsMessageText, Data: []byte("Invalid message")},
 		},
 	}
 
@@ -121,20 +124,13 @@ func TestSimulator_simulateWsResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			mockConnClient := new(ws.MockConnection)
+			mockConnClient := ws.NewMockConnection(t)
 			mockConnClient.On("Write", ctx, tt.expectedMessageClient).Maybe().Return(nil)
-			mockConnServer := new(ws.MockConnection)
+			mockConnServer := ws.NewMockConnection(t)
 			mockConnServer.On("Write", ctx, tt.expectedMessageServer).Maybe().Return(nil)
 
-			start := time.Now()
 			err := sim.simulateWsResponse(ctx, tt.message, mockConnClient, mockConnServer)
-			delay := time.Since(start)
-
 			assert.NoError(t, err)
-			mockConnClient.AssertExpectations(t)
-			mockConnServer.AssertExpectations(t)
-
-			assert.GreaterOrEqual(t, delay, tt.expectedDelay)
 		})
 	}
 }

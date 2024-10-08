@@ -30,22 +30,22 @@ func main() {
 		},
 		WsEndpoint: "/ws",
 		WsRules: []simulator.WsRule{
-			{
-				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping\n")),
-				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
-			},
-			{
-				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
-				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
-			},
-			{
-				MessageMatcher: simulator.NewWsJsonMatcher(`{ "id": 1, "method": "depth_request", "params": [ "ETH_BTC", 100,  "0" ] }`),
-				MessageHandler: simulator.NewWsMessageFromString(simulator.WsMessageText, "TODO", 0),
-			},
-			{
-				MessageMatcher: simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),
-				MessageHandler: simulator.NewWsRedirectHandler(),
-			},
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("ping\n")),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsJsonMatcher(`{ "id": 1, "method": "depth_request", "params": [ "ETH_BTC", 100,  "0" ] }`),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "TODO", 0),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),
+				simulator.NewWsRedirectHandler(),
+			),
 		},
 		WsRedirectUrl: "wss://api.whitebit.com/ws",
 		WsRecordDir:   filepath.Join("records", "ws"),

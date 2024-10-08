@@ -17,6 +17,10 @@ const (
 	WsMessageBinary = ws.MessageBinary
 )
 
+func NewWsRule(messageMatcher ws.MessageMatcher, messageHandler ws.MessageHandler) ws.RuleImpl {
+	return ws.RuleImpl{MessageMatcher: messageMatcher, MessageHandler: messageHandler}
+}
+
 func NewWsMessagePredicate(messageType WsMessageType, data []byte) ws.MessagePredicate {
 	return ws.NewMessagePredicate(messageType, data)
 }
