@@ -29,15 +29,13 @@ func TestRedirectHandler_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockConnClient := new(MockConnection)
-			mockConnServer := new(MockConnection)
+			mockConnClient := NewMockConnection(t)
+			mockConnServer := NewMockConnection(t)
 			mockConnServer.On("Write", ctx, tt.expectedMessage).Return(nil)
 
 			err := NewRedirectHandler().Handle(ctx, tt.message, mockConnClient, mockConnServer)
 
 			assert.NoError(t, err)
-			mockConnClient.AssertExpectations(t)
-			mockConnServer.AssertExpectations(t)
 			mockConnClient.AssertNotCalled(t, "Write", mock.Anything)
 		})
 	}

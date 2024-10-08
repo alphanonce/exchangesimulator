@@ -45,9 +45,9 @@ func TestMessageFromString_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockConnClient := new(MockConnection)
+			mockConnClient := NewMockConnection(t)
 			mockConnClient.On("Write", ctx, tt.expectedMessage).Return(nil)
-			mockConnServer := new(MockConnection)
+			mockConnServer := NewMockConnection(t)
 
 			start := time.Now()
 			err := tt.handler.Handle(ctx, Message{}, mockConnClient, mockConnServer)
@@ -56,8 +56,6 @@ func TestMessageFromString_Handle(t *testing.T) {
 			assert.NoError(t, err)
 			assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 			assert.LessOrEqual(t, duration, 2*tt.expectedDelay)
-			mockConnClient.AssertExpectations(t)
-			mockConnServer.AssertExpectations(t)
 			mockConnServer.AssertNotCalled(t, "Write", mock.Anything)
 		})
 	}
