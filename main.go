@@ -35,12 +35,8 @@ func main() {
 				simulator.NewWsMessageFromString(simulator.WsMessageText, "pong", time.Second),
 			),
 			simulator.NewWsRule(
-				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("pong\n")),
-				simulator.NewWsMessageFromString(simulator.WsMessageText, "ping", time.Second),
-			),
-			simulator.NewWsRule(
 				simulator.NewWsJsonMatcher(`{ "id": 1, "method": "depth_request", "params": [ "ETH_BTC", 100,  "0" ] }`),
-				simulator.NewWsMessageFromString(simulator.WsMessageText, "TODO", 0),
+				simulator.NewWsMessageFromFiles("data/ws/depth_request"),
 			),
 			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),

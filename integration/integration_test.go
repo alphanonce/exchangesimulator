@@ -50,10 +50,44 @@ func TestIntegration(t *testing.T) {
 	defer mockServer.Close()
 	mockServerURL := "ws" + strings.TrimPrefix(mockServer.URL, "http")
 
-	// Create a temporary directory for saving messages
+	// Create a temporary directory for test files and for saving messages
 	tempDir := t.TempDir()
 
+	// Create test YAML files
+	err := os.Mkdir(filepath.Join(tempDir, "single_file"), 0755)
+	assert.NoError(t, err)
+	err = os.Mkdir(filepath.Join(tempDir, "multiple_files"), 0755)
+	assert.NoError(t, err)
+	testFiles := []struct {
+		Path string
+		Data []byte
+	}{
+		{
+			Path: filepath.Join(tempDir, "single_file", "2000-01-23T12:34:56.000000+09:00.yaml"),
+			Data: []byte("type: text\ndata: 'test content 1'\n"),
+		},
+		{
+			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.000000+09:00.yaml"),
+			Data: []byte("type: text\ndata: 'test content 1'\n"),
+		},
+		{
+			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.010000+09:00.yaml"),
+			Data: []byte("type: text\ndata: 'test content 2'\n"),
+		},
+		{
+			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.020000+09:00.yaml"),
+			Data: []byte("type: text\ndata: 'test content 3'\n"),
+		},
+	}
+	for _, f := range testFiles {
+		err := os.WriteFile(f.Path, f.Data, 0644)
+		assert.NoError(t, err)
+	}
+
 	// Define the configuration for the simulator
+	err = os.Mkdir(filepath.Join(tempDir, "redirect"), 0755)
+	assert.NoError(t, err)
+
 	config := simulator.Config{
 		ServerAddress: "localhost:8081",
 		HttpBasePath:  "/api",
@@ -78,12 +112,20 @@ func TestIntegration(t *testing.T) {
 				simulator.NewWsMessageFromString(simulator.WsMessageText, `{ "id": 1, "result": 1493285895, "error": null }`, 5*time.Millisecond),
 			),
 			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("single_file")),
+				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "single_file")),
+			),
+			simulator.NewWsRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("multiple_files")),
+				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "multiple_files")),
+			),
+			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
 				simulator.NewWsRedirectHandler(),
 			),
 		},
 		WsRedirectUrl: mockServerURL,
-		WsRecordDir:   tempDir,
+		WsRecordDir:   filepath.Join(tempDir, "redirect"),
 	}
 
 	// Create a simulator
@@ -182,6 +224,7 @@ func testHttp(t *testing.T, config simulator.Config) {
 func testWs(t *testing.T, config simulator.Config) {
 	testWsBasicTest(t, config)
 	testWsMessageMatchers(t, config)
+	testWsMessageHandlers(t, config)
 	testWsRedirection(t, config)
 }
 
@@ -287,6 +330,73 @@ func testWsMessageMatchers(t *testing.T, config simulator.Config) {
 
 				assert.Equal(t, tt.expectedMsgType, msgType)
 				assert.Equal(t, tt.expectedMsgData, msgData)
+				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
+			}
+		})
+	}
+}
+
+func testWsMessageHandlers(t *testing.T, config simulator.Config) {
+	tests := []struct {
+		name            string
+		msgType         websocket.MessageType
+		msgData         []byte
+		expectedMsgType websocket.MessageType
+		expectedMsgData [][]byte
+		expectedDelay   time.Duration
+	}{
+		{
+			name:            "WebSocket message from a single file",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("single_file"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: [][]byte{
+				[]byte("test content 1"),
+			},
+			expectedDelay: 0,
+		},
+		{
+			name:            "WebSocket message from multiple files",
+			msgType:         websocket.MessageText,
+			msgData:         []byte("multiple_files"),
+			expectedMsgType: websocket.MessageText,
+			expectedMsgData: [][]byte{
+				[]byte("test content 1"),
+				[]byte("test content 2"),
+				[]byte("test content 3"),
+			},
+			expectedDelay: 20 * time.Millisecond,
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			defer cancel()
+
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+			conn, _, err := websocket.Dial(ctx, wsURL, nil)
+			require.NoError(t, err)
+			defer conn.Close(websocket.StatusNormalClosure, "")
+
+			for i := 0; i < 3; i++ {
+				start := time.Now()
+
+				err := conn.Write(ctx, tt.msgType, tt.msgData)
+				require.NoError(t, err)
+
+				for _, expected := range tt.expectedMsgData {
+					msgType, msgData, err := conn.Read(ctx)
+					require.NoError(t, err)
+
+					assert.Equal(t, tt.expectedMsgType, msgType)
+					assert.Equal(t, expected, msgData)
+				}
+
+				duration := time.Since(start)
+
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
 			}

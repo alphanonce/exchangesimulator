@@ -33,6 +33,10 @@ func NewWsMessageFromString(messageType WsMessageType, data string, responseTime
 	return ws.NewMessageFromString(messageType, data, responseTime)
 }
 
+func NewWsMessageFromFiles(dirPath string) ws.MessageFromFiles {
+	return ws.NewMessageFromFiles(dirPath)
+}
+
 func NewWsRedirectHandler() ws.RedirectHandler {
 	return ws.NewRedirectHandler()
 }
