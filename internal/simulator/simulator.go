@@ -42,7 +42,6 @@ func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Simulator) httpRequestHandler(w http.ResponseWriter, r *http.Request) {
-	startTime := time.Now()
 	request, err := convertHttpRequest(r)
 	if err != nil {
 		logger.Error("Error reading request body", log.Any("error", err))
@@ -55,9 +54,14 @@ func (s Simulator) httpRequestHandler(w http.ResponseWriter, r *http.Request) {
 		log.Any("request", request),
 	)
 
-	response, endTime := s.simulateHttpResponse(request, startTime)
+	response, err := s.simulateHttpResponse(request)
+	if err != nil {
+		logger.Error("TODO", log.Any("error", err))
+		http.Error(w, "Invalid body", http.StatusBadRequest) // TODO
+		return
+	}
+
 	convertHttpResponse(w, response)
-	time.Sleep(time.Until(endTime))
 
 	logger.Debug(
 		"Completed a HTTP request",
@@ -66,17 +70,17 @@ func (s Simulator) httpRequestHandler(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func (s Simulator) simulateHttpResponse(request HttpRequest, startTime time.Time) (HttpResponse, time.Time) {
+func (s Simulator) simulateHttpResponse(request HttpRequest) (HttpResponse, error) {
 	rule, ok := s.config.GetHttpRule(request)
 	if !ok {
 		response := HttpResponse{
 			StatusCode: http.StatusNotFound,
 			Body:       []byte("Invalid request"),
 		}
-		return response, startTime
+		return response, nil
 	}
 
-	return rule.Response(request), startTime.Add(rule.ResponseTime())
+	return rule.Response(request)
 }
 
 func convertHttpRequest(r *http.Request) (HttpRequest, error) {
@@ -90,6 +94,7 @@ func convertHttpRequest(r *http.Request) (HttpRequest, error) {
 		Host:        r.Host,
 		Path:        r.URL.Path,
 		QueryString: r.URL.RawQuery,
+		Header:      r.Header,
 		Body:        bodyBytes,
 	}
 	return request, nil

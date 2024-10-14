@@ -24,8 +24,8 @@ func main() {
 				simulator.NewHttpResponseFromString(200, `{"status":"1"}`, time.Second),
 			),
 			simulator.NewHttpRule(
-				simulator.NewHttpRequestPredicate("GET", "/v4/public/ping"),
-				simulator.NewHttpResponseFromString(200, `["pong"]`, time.Second),
+				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
+				simulator.NewHttpRedirectResponder("https://api.binance.com"),
 			),
 		},
 		WsEndpoint: "/ws",

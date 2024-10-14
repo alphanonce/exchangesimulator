@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/http"
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
@@ -24,8 +23,7 @@ func TestSimulator_simulateHttpResponse(t *testing.T) {
 	mockRule := http.NewMockRule(t)
 	mockRule.On("MatchRequest", HttpRequest{Method: "GET", Path: "/test"}).Return(true)
 	mockRule.On("MatchRequest", mock.Anything).Return(false)
-	mockRule.On("Response", mock.Anything).Return(HttpResponse{StatusCode: 200, Body: []byte("OK")})
-	mockRule.On("ResponseTime").Return(time.Second)
+	mockRule.On("Response", mock.Anything).Return(HttpResponse{StatusCode: 200, Body: []byte("OK")}, nil)
 
 	config := Config{
 		HttpBasePath: "/api",
@@ -34,31 +32,27 @@ func TestSimulator_simulateHttpResponse(t *testing.T) {
 	sim := New(config)
 
 	tests := []struct {
-		name          string
-		request       HttpRequest
-		expectedResp  HttpResponse
-		expectedDelay time.Duration
+		name         string
+		request      HttpRequest
+		expectedResp HttpResponse
 	}{
 		{
-			name:          "Matching request",
-			request:       HttpRequest{Method: "GET", Path: "/api/test"},
-			expectedResp:  HttpResponse{StatusCode: 200, Body: []byte("OK")},
-			expectedDelay: time.Second,
+			name:         "Matching request",
+			request:      HttpRequest{Method: "GET", Path: "/api/test"},
+			expectedResp: HttpResponse{StatusCode: 200, Body: []byte("OK")},
 		},
 		{
-			name:          "Non-matching request",
-			request:       HttpRequest{Method: "POST", Path: "/api/other"},
-			expectedResp:  HttpResponse{StatusCode: 404, Body: []byte("Invalid request")},
-			expectedDelay: 0,
+			name:         "Non-matching request",
+			request:      HttpRequest{Method: "POST", Path: "/api/other"},
+			expectedResp: HttpResponse{StatusCode: 404, Body: []byte("Invalid request")},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			startTime := time.Now()
-			resp, endTime := sim.simulateHttpResponse(tt.request, startTime)
+			resp, err := sim.simulateHttpResponse(tt.request)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedResp, resp)
-			assert.Equal(t, startTime.Add(tt.expectedDelay), endTime)
 		})
 	}
 }

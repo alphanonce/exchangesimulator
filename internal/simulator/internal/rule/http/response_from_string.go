@@ -21,13 +21,11 @@ func NewResponseFromString(statusCode int, body string, responseTime time.Durati
 	}
 }
 
-func (r ResponseFromString) Response(_ Request) Response {
-	return Response{
+func (r ResponseFromString) Response(_ Request) (Response, error) {
+	resp := Response{
 		StatusCode: r.statusCode,
 		Body:       []byte(r.body),
 	}
-}
-
-func (r ResponseFromString) ResponseTime() time.Duration {
-	return r.responseTime
+	time.Sleep(r.responseTime)
+	return resp, nil
 }

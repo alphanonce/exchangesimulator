@@ -5,5 +5,6 @@ type Request struct {
 	Host        string
 	Path        string
 	QueryString string
+	Header      map[string][]string
 	Body        []byte
 }

@@ -100,6 +100,11 @@ func TestIntegration(t *testing.T) {
 				simulator.NewHttpRequestPredicate("POST", "/data"),
 				simulator.NewHttpResponseFromString(201, "Created", 200*time.Millisecond),
 			),
+			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
+				simulator.NewHttpRedirectResponder("https://api.binance.com"),
+			),
 		},
 		WsEndpoint: "/ws",
 		WsRules: []simulator.WsRule{
@@ -191,7 +196,6 @@ func testHttp(t *testing.T, config simulator.Config) {
 			path:           "/unknown",
 			expectedStatus: 404,
 			expectedBody:   "Invalid endpoint\n",
-			expectedDelay:  0,
 		},
 		{
 			name:           "Matched endpoint, unmatched path",
@@ -199,7 +203,15 @@ func testHttp(t *testing.T, config simulator.Config) {
 			path:           "/api/unknown",
 			expectedStatus: 404,
 			expectedBody:   "Invalid request",
-			expectedDelay:  0,
+		},
+		{
+			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
+			name:           "Redirect to Binance",
+			method:         "GET",
+			path:           "/api/v3/ping",
+			body:           "",
+			expectedStatus: 200,
+			expectedBody:   "{}",
 		},
 	}
 
@@ -222,8 +234,10 @@ func testHttp(t *testing.T, config simulator.Config) {
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 			assert.Equal(t, tt.expectedBody, string(body))
-			assert.GreaterOrEqual(t, duration, tt.expectedDelay)
-			assert.Less(t, duration, tt.expectedDelay+50*time.Millisecond) // Allow for some overhead
+			if tt.expectedDelay > 0 {
+				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+				assert.Less(t, duration, tt.expectedDelay+50*time.Millisecond) // Allow for some overhead
+			}
 		})
 	}
 }

@@ -21,3 +21,7 @@ func NewHttpRequestPredicate(method string, path string) http.RequestPredicate {
 func NewHttpResponseFromString(statusCode int, body string, responseTime time.Duration) http.ResponseFromString {
 	return http.NewResponseFromString(statusCode, body, responseTime)
 }
+
+func NewHttpRedirectResponder(targetUrl string) http.RedirectResponder {
+	return http.NewRedirectResponder(targetUrl)
+}
