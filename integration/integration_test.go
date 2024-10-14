@@ -92,14 +92,14 @@ func TestIntegration(t *testing.T) {
 		ServerAddress: "localhost:8081",
 		HttpBasePath:  "/api",
 		HttpRules: []simulator.HttpRule{
-			{
-				RequestMatcher: simulator.NewHttpRequestPredicate("GET", "/test"),
-				Responder:      simulator.NewHttpResponseFromString(200, "OK", 100*time.Millisecond),
-			},
-			{
-				RequestMatcher: simulator.NewHttpRequestPredicate("POST", "/data"),
-				Responder:      simulator.NewHttpResponseFromString(201, "Created", 200*time.Millisecond),
-			},
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("GET", "/test"),
+				simulator.NewHttpResponseFromString(200, "OK", 100*time.Millisecond),
+			),
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("POST", "/data"),
+				simulator.NewHttpResponseFromString(201, "Created", 200*time.Millisecond),
+			),
 		},
 		WsEndpoint: "/ws",
 		WsRules: []simulator.WsRule{

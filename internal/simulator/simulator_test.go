@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/http"
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,51 +15,40 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	config := Config{
-		ServerAddress: "localhost:8080",
-		HttpRules: []HttpRule{
-			{
-				RequestMatcher: NewHttpRequestPredicate("GET", "/test"),
-				Responder:      NewHttpResponseFromString(200, "OK", time.Second),
-			},
-		},
-	}
+	config := Config{ServerAddress: "localhost:8080"}
 	sim := New(config)
 	assert.Equal(t, config, sim.config)
 }
 
 func TestSimulator_simulateHttpResponse(t *testing.T) {
+	mockRule := http.NewMockRule(t)
+	mockRule.On("MatchRequest", HttpRequest{Method: "GET", Path: "/test"}).Return(true)
+	mockRule.On("MatchRequest", mock.Anything).Return(false)
+	mockRule.On("Response", mock.Anything).Return(HttpResponse{StatusCode: 200, Body: []byte("OK")})
+	mockRule.On("ResponseTime").Return(time.Second)
+
 	config := Config{
-		ServerAddress: "localhost:8080",
-		HttpBasePath:  "/api",
-		HttpRules: []HttpRule{
-			{
-				RequestMatcher: NewHttpRequestPredicate("GET", "/test"),
-				Responder:      NewHttpResponseFromString(200, "OK", time.Second),
-			},
-		},
+		HttpBasePath: "/api",
+		HttpRules:    []HttpRule{mockRule},
 	}
 	sim := New(config)
 
 	tests := []struct {
 		name          string
 		request       HttpRequest
-		expectedCode  int
-		expectedBody  string
+		expectedResp  HttpResponse
 		expectedDelay time.Duration
 	}{
 		{
 			name:          "Matching request",
 			request:       HttpRequest{Method: "GET", Path: "/api/test"},
-			expectedCode:  200,
-			expectedBody:  "OK",
+			expectedResp:  HttpResponse{StatusCode: 200, Body: []byte("OK")},
 			expectedDelay: time.Second,
 		},
 		{
 			name:          "Non-matching request",
 			request:       HttpRequest{Method: "POST", Path: "/api/other"},
-			expectedCode:  404,
-			expectedBody:  "Invalid request",
+			expectedResp:  HttpResponse{StatusCode: 404, Body: []byte("Invalid request")},
 			expectedDelay: 0,
 		},
 	}
@@ -67,8 +57,7 @@ func TestSimulator_simulateHttpResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			startTime := time.Now()
 			resp, endTime := sim.simulateHttpResponse(tt.request, startTime)
-			assert.Equal(t, tt.expectedCode, resp.StatusCode)
-			assert.Equal(t, tt.expectedBody, string(resp.Body))
+			assert.Equal(t, tt.expectedResp, resp)
 			assert.Equal(t, startTime.Add(tt.expectedDelay), endTime)
 		})
 	}

@@ -19,14 +19,14 @@ type Config struct {
 func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {
 	suffix, found := strings.CutPrefix(request.Path, c.HttpBasePath)
 	if !found {
-		return HttpRule{}, false
+		return nil, false
 	}
 
 	tmpRequest := request
 	tmpRequest.Path = suffix
 	i := slices.IndexFunc(c.HttpRules, func(r HttpRule) bool { return r.MatchRequest(tmpRequest) })
 	if i == -1 {
-		return HttpRule{}, false
+		return nil, false
 	}
 
 	return c.HttpRules[i], true

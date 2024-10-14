@@ -19,14 +19,14 @@ func main() {
 		ServerAddress: "localhost:8080",
 		HttpBasePath:  "/api",
 		HttpRules: []simulator.HttpRule{
-			{
-				RequestMatcher: simulator.NewHttpRequestPredicate("GET", "/v4/public/platform/status"),
-				Responder:      simulator.NewHttpResponseFromString(200, `{"status":"1"}`, time.Second),
-			},
-			{
-				RequestMatcher: simulator.NewHttpRequestPredicate("GET", "/v4/public/ping"),
-				Responder:      simulator.NewHttpResponseFromString(200, `["pong"]`, time.Second),
-			},
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("GET", "/v4/public/platform/status"),
+				simulator.NewHttpResponseFromString(200, `{"status":"1"}`, time.Second),
+			),
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("GET", "/v4/public/ping"),
+				simulator.NewHttpResponseFromString(200, `["pong"]`, time.Second),
+			),
 		},
 		WsEndpoint: "/ws",
 		WsRules: []simulator.WsRule{

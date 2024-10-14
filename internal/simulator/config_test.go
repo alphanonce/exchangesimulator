@@ -2,25 +2,25 @@ package simulator
 
 import (
 	"testing"
-	"time"
 
+	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/http"
 	"alphanonce.com/exchangesimulator/internal/simulator/internal/rule/ws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestConfig_GetHttpRule(t *testing.T) {
-	rule1 := HttpRule{
-		RequestMatcher: NewHttpRequestPredicate("GET", "/users"),
-		Responder:      NewHttpResponseFromString(200, "Users", time.Second),
-	}
-	rule2 := HttpRule{
-		RequestMatcher: NewHttpRequestPredicate("POST", "/users"),
-		Responder:      NewHttpResponseFromString(201, "Created", time.Second),
-	}
+	mockRule1 := http.NewMockRule(t)
+	mockRule1.On("MatchRequest", HttpRequest{Method: "GET", Path: "/users"}).Return(true)
+	mockRule1.On("MatchRequest", mock.Anything).Return(false)
+
+	mockRule2 := http.NewMockRule(t)
+	mockRule2.On("MatchRequest", HttpRequest{Method: "POST", Path: "/users"}).Return(true)
+	mockRule2.On("MatchRequest", mock.Anything).Return(false)
+
 	config := Config{
 		HttpBasePath: "/api",
-		HttpRules:    []HttpRule{rule1, rule2},
+		HttpRules:    []HttpRule{mockRule1, mockRule2},
 	}
 
 	tests := []struct {
@@ -29,11 +29,11 @@ func TestConfig_GetHttpRule(t *testing.T) {
 		expectedRule HttpRule
 		expectedOk   bool
 	}{
-		{"Matching GET request", HttpRequest{Method: "GET", Path: "/api/users"}, rule1, true},
-		{"Matching POST request", HttpRequest{Method: "POST", Path: "/api/users"}, rule2, true},
-		{"Non-matching path", HttpRequest{Method: "GET", Path: "/api/products"}, HttpRule{}, false},
-		{"Non-matching method", HttpRequest{Method: "PUT", Path: "/api/users"}, HttpRule{}, false},
-		{"Non-matching base path", HttpRequest{Method: "GET", Path: "/users"}, HttpRule{}, false},
+		{"Matching GET request", HttpRequest{Method: "GET", Path: "/api/users"}, mockRule1, true},
+		{"Matching POST request", HttpRequest{Method: "POST", Path: "/api/users"}, mockRule2, true},
+		{"Non-matching path", HttpRequest{Method: "GET", Path: "/api/products"}, nil, false},
+		{"Non-matching method", HttpRequest{Method: "PUT", Path: "/api/users"}, nil, false},
+		{"Non-matching base path", HttpRequest{Method: "GET", Path: "/users"}, nil, false},
 	}
 
 	for _, tt := range tests {
