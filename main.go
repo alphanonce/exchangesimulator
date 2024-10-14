@@ -38,6 +38,13 @@ func main() {
 				simulator.NewWsJsonMatcher(`{ "id": 1, "method": "depth_request", "params": [ "ETH_BTC", 100,  "0" ] }`),
 				simulator.NewWsMessageFromFiles("data/ws/depth_request"),
 			),
+			simulator.NewWsSubscriptionRule(
+				simulator.NewWsJsonMatcher(`{ "id": 2, "method": "depth_subscribe", "params": [ "ETH_BTC", 100, "0", true ] }`),
+				simulator.NewWsMessageFromFiles("data/ws/depth_subscribe"),
+				simulator.NewWsJsonMatcher(`{ "id": 3, "method": "depth_unsubscribe", "params": [] }`),
+				simulator.NewWsMessageFromFiles("data/ws/depth_unsubscribe"),
+				simulator.NewWsMessageFromFiles("data/ws/depth_update"),
+			),
 			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageAny, nil),
 				simulator.NewWsRedirectHandler(),

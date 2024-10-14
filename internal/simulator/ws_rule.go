@@ -17,9 +17,27 @@ const (
 	WsMessageBinary = ws.MessageBinary
 )
 
+// Rules
+
 func NewWsRule(messageMatcher ws.MessageMatcher, messageHandler ws.MessageHandler) ws.RuleImpl {
 	return ws.RuleImpl{MessageMatcher: messageMatcher, MessageHandler: messageHandler}
 }
+
+func NewWsSubscriptionRule(
+	subscriptionMessageMatcher ws.MessageMatcher,
+	subscriptionResponse ws.MessageHandler,
+	unsubscriptionMessageMatcher ws.MessageMatcher,
+	unsubscriptionResponse ws.MessageHandler,
+	updateResponse ws.MessageHandler,
+) *ws.SubscriptionRule {
+	return ws.NewSubscriptionRule(
+		subscriptionMessageMatcher, subscriptionResponse,
+		unsubscriptionMessageMatcher, unsubscriptionResponse,
+		updateResponse,
+	)
+}
+
+// MessageMatchers
 
 func NewWsMessagePredicate(messageType WsMessageType, data []byte) ws.MessagePredicate {
 	return ws.NewMessagePredicate(messageType, data)
@@ -28,6 +46,8 @@ func NewWsMessagePredicate(messageType WsMessageType, data []byte) ws.MessagePre
 func NewWsJsonMatcher(jsonString string) ws.JsonMessageMatcher {
 	return ws.NewJsonMessageMatcher(jsonString)
 }
+
+// MessageHandlers
 
 func NewWsMessageFromString(messageType WsMessageType, data string, responseTime time.Duration) ws.MessageFromString {
 	return ws.NewMessageFromString(messageType, data, responseTime)

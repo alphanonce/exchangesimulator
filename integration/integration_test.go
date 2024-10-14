@@ -119,6 +119,13 @@ func TestIntegration(t *testing.T) {
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("multiple_files")),
 				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "multiple_files")),
 			),
+			simulator.NewWsSubscriptionRule(
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("subscribe")),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "subscribe_success", 5*time.Millisecond),
+				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("unsubscribe")),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "unsubscribe_success", 5*time.Millisecond),
+				simulator.NewWsMessageFromString(simulator.WsMessageText, "subscription_update", 10*time.Millisecond),
+			),
 			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("redirect")),
 				simulator.NewWsRedirectHandler(),
@@ -225,6 +232,7 @@ func testWs(t *testing.T, config simulator.Config) {
 	testWsBasicTest(t, config)
 	testWsMessageMatchers(t, config)
 	testWsMessageHandlers(t, config)
+	testWsSubscription(t, config)
 	testWsRedirection(t, config)
 }
 
@@ -399,6 +407,73 @@ func testWsMessageHandlers(t *testing.T, config simulator.Config) {
 
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, 2*tt.expectedDelay+10*time.Millisecond)
+			}
+		})
+	}
+}
+
+func testWsSubscription(t *testing.T, config simulator.Config) {
+	tests := []struct {
+		name                  string
+		subMsgType            websocket.MessageType
+		subMsgData            []byte
+		unsubMsgType          websocket.MessageType
+		unsubMsgData          []byte
+		expectedSubMsgType    websocket.MessageType
+		expectedSubMsgData    []byte
+		expectedUpdateMsgType websocket.MessageType
+		expectedUpdateMsgData []byte
+		expectedUnsubMsgType  websocket.MessageType
+		expectedUnsubMsgData  []byte
+	}{
+		{
+			name:                  "WebSocket subscription test",
+			subMsgType:            websocket.MessageText,
+			subMsgData:            []byte("subscribe"),
+			unsubMsgType:          websocket.MessageText,
+			unsubMsgData:          []byte("unsubscribe"),
+			expectedSubMsgType:    websocket.MessageText,
+			expectedSubMsgData:    []byte("subscribe_success"),
+			expectedUpdateMsgType: websocket.MessageText,
+			expectedUpdateMsgData: []byte("subscription_update"),
+			expectedUnsubMsgType:  websocket.MessageText,
+			expectedUnsubMsgData:  []byte("unsubscribe_success"),
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			wsURL := "ws://" + config.ServerAddress + config.WsEndpoint
+			conn, _, err := websocket.Dial(ctx, wsURL, nil)
+			require.NoError(t, err)
+			defer conn.Close(websocket.StatusNormalClosure, "")
+
+			for i := 0; i < 3; i++ {
+				err := conn.Write(ctx, tt.subMsgType, tt.subMsgData)
+				require.NoError(t, err)
+
+				subMsgType, subMsgData, err := conn.Read(ctx)
+				require.NoError(t, err)
+
+				updateMsgType, updateMsgData, err := conn.Read(ctx)
+				require.NoError(t, err)
+
+				err = conn.Write(ctx, tt.unsubMsgType, tt.unsubMsgData)
+				require.NoError(t, err)
+
+				unsubMsgType, unsubMsgData, err := conn.Read(ctx)
+				require.NoError(t, err)
+
+				assert.Equal(t, tt.expectedSubMsgType, subMsgType)
+				assert.Equal(t, tt.expectedSubMsgData, subMsgData)
+				assert.Equal(t, tt.expectedUpdateMsgType, updateMsgType)
+				assert.Equal(t, tt.expectedUpdateMsgData, updateMsgData)
+				assert.Equal(t, tt.expectedUnsubMsgType, unsubMsgType)
+				assert.Equal(t, tt.expectedUnsubMsgData, unsubMsgData)
 			}
 		})
 	}

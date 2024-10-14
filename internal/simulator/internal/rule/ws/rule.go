@@ -3,6 +3,8 @@ package ws
 import "context"
 
 //go:generate mockery --name=Rule --inpackage --filename=mock_rule.go
+//go:generate mockery --name=MessageMatcher --inpackage --filename=mock_message_matcher.go
+//go:generate mockery --name=MessageHandler --inpackage --filename=mock_message_handler.go
 
 type Rule interface {
 	MessageMatcher
