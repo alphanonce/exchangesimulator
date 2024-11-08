@@ -14,25 +14,20 @@ func TestNewResponseFromString(t *testing.T) {
 
 	r := NewResponseFromString(statusCode, body, responseTime)
 
-	assert.Equal(t, statusCode, r.Response(Request{}).StatusCode)
-	assert.Equal(t, []byte(body), r.Response(Request{}).Body)
-	assert.Equal(t, responseTime, r.ResponseTime())
+	assert.Equal(t, statusCode, r.statusCode)
+	assert.Equal(t, body, r.body)
+	assert.Equal(t, responseTime, r.responseTime)
 }
 
 func TestResponseFromString_Response(t *testing.T) {
 	r := NewResponseFromString(201, `{"status": "created"}`, 50*time.Millisecond)
 
-	response := r.Response(Request{})
+	start := time.Now()
+	resp, err := r.Response(Request{})
+	duration := time.Since(start)
 
-	assert.Equal(t, 201, response.StatusCode)
-	assert.Equal(t, []byte(`{"status": "created"}`), response.Body)
-}
-
-func TestResponseFromString_ResponseTime(t *testing.T) {
-	expectedResponseTime := 75 * time.Millisecond
-	r := NewResponseFromString(200, `{"status": "ok"}`, expectedResponseTime)
-
-	actualResponseTime := r.ResponseTime()
-
-	assert.Equal(t, expectedResponseTime, actualResponseTime)
+	assert.NoError(t, err)
+	assert.Equal(t, Response{StatusCode: 201, Body: []byte(`{"status": "created"}`)}, resp)
+	assert.GreaterOrEqual(t, duration, 50*time.Millisecond)
+	assert.LessOrEqual(t, duration, 100*time.Millisecond)
 }

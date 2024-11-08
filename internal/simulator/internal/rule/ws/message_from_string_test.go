@@ -21,38 +21,42 @@ func TestNewMessageFromString(t *testing.T) {
 	assert.Equal(t, responseTime, h.responseTime)
 }
 
-func TestMessageFromString_Response(t *testing.T) {
-	messageType := MessageBinary
-	data := "response data"
-	responseTime := 50 * time.Millisecond
+func TestMessageFromString_Handle(t *testing.T) {
+	tests := []struct {
+		name            string
+		handler         MessageFromString
+		expectedMessage Message
+		expectedDelay   time.Duration
+	}{
+		{
+			name:            "Text message",
+			handler:         NewMessageFromString(MessageText, "data1", 5*time.Millisecond),
+			expectedMessage: Message{Type: MessageText, Data: []byte("data1")},
+			expectedDelay:   5 * time.Millisecond,
+		},
+		{
+			name:            "Binary message",
+			handler:         NewMessageFromString(MessageBinary, "data2", 5*time.Millisecond),
+			expectedMessage: Message{Type: MessageBinary, Data: []byte("data2")},
+			expectedDelay:   5 * time.Millisecond,
+		},
+	}
 
-	h := NewMessageFromString(messageType, data, responseTime)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			mockConnClient := NewMockConnection(t)
+			mockConnClient.On("Write", ctx, tt.expectedMessage).Return(nil)
+			mockConnServer := NewMockConnection(t)
 
-	ctx := context.Background()
-	mockConn := new(MockConnection)
-	mockConn.On("Write", ctx, Message{Type: messageType, Data: []byte(data)}).Return(nil)
+			start := time.Now()
+			err := tt.handler.Handle(ctx, Message{}, mockConnClient, mockConnServer)
+			duration := time.Since(start)
 
-	err := h.Handle(ctx, Message{}, mockConn)
-
-	assert.NoError(t, err)
-	mockConn.AssertExpectations(t)
-}
-
-func TestMessageFromString_ResponseTime(t *testing.T) {
-	messageType := MessageText
-	data := "test"
-	responseTime := 75 * time.Millisecond
-
-	h := NewMessageFromString(messageType, data, responseTime)
-
-	start := time.Now()
-	ctx := context.Background()
-	mockConn := new(MockConnection)
-	mockConn.On("Write", ctx, mock.Anything).Return(nil)
-
-	err := h.Handle(ctx, Message{}, mockConn)
-
-	elapsed := time.Since(start)
-	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, elapsed, responseTime)
+			assert.NoError(t, err)
+			assert.GreaterOrEqual(t, duration, tt.expectedDelay)
+			assert.LessOrEqual(t, duration, 2*tt.expectedDelay)
+			mockConnServer.AssertNotCalled(t, "Write", mock.Anything)
+		})
+	}
 }

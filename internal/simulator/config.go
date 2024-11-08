@@ -12,19 +12,21 @@ type Config struct {
 	HttpRules     []HttpRule
 	WsEndpoint    string
 	WsRules       []WsRule
+	WsRedirectUrl string
+	WsRecordDir   string
 }
 
 func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {
 	suffix, found := strings.CutPrefix(request.Path, c.HttpBasePath)
 	if !found {
-		return HttpRule{}, false
+		return nil, false
 	}
 
 	tmpRequest := request
 	tmpRequest.Path = suffix
 	i := slices.IndexFunc(c.HttpRules, func(r HttpRule) bool { return r.MatchRequest(tmpRequest) })
 	if i == -1 {
-		return HttpRule{}, false
+		return nil, false
 	}
 
 	return c.HttpRules[i], true
@@ -33,7 +35,7 @@ func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {
 func (c *Config) GetWsRule(message WsMessage) (WsRule, bool) {
 	i := slices.IndexFunc(c.WsRules, func(r WsRule) bool { return r.MatchMessage(message) })
 	if i == -1 {
-		return WsRule{}, false
+		return nil, false
 	}
 
 	return c.WsRules[i], true

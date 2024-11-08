@@ -2,6 +2,8 @@ package simulator
 
 import (
 	"context"
+	"encoding/hex"
+	"errors"
 	"time"
 
 	"alphanonce.com/exchangesimulator/internal/log"
@@ -17,10 +19,13 @@ type WsConnWrapper struct {
 
 func wrapConnection(conn *websocket.Conn) WsConnWrapper {
 	return WsConnWrapper{conn: conn}
-
 }
 
 func (w WsConnWrapper) Read(ctx context.Context) (WsMessage, error) {
+	if w.conn == nil {
+		return WsMessage{}, errors.New("connection is nil")
+	}
+
 	incomingType, incomingData, err := w.conn.Read(ctx)
 	if err != nil {
 		return WsMessage{}, err
@@ -30,7 +35,7 @@ func (w WsConnWrapper) Read(ctx context.Context) (WsMessage, error) {
 		"Received a WebSocket message",
 		log.Any("time", time.Now()),
 		log.Group("msg",
-			log.Any("data", incomingData),
+			log.String("data", hex.EncodeToString(incomingData)),
 			log.String("type", incomingType.String()),
 		),
 	)
@@ -54,6 +59,10 @@ func convertWsMessageToInternal(data []byte, messageType websocket.MessageType) 
 }
 
 func (w WsConnWrapper) Write(ctx context.Context, message WsMessage) error {
+	if w.conn == nil {
+		return errors.New("connection is nil")
+	}
+
 	outgoingData, outgoingType := convertWsMessageFromInternal(message)
 
 	err := w.conn.Write(ctx, outgoingType, outgoingData)
@@ -64,7 +73,7 @@ func (w WsConnWrapper) Write(ctx context.Context, message WsMessage) error {
 	logger.Debug(
 		"Sent a WebSocket message",
 		log.Group("msg",
-			log.Any("data", outgoingData),
+			log.String("data", hex.EncodeToString(outgoingData)),
 			log.String("type", outgoingType.String()),
 		),
 	)

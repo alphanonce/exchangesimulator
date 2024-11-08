@@ -1,10 +1,8 @@
 package http
 
-import (
-	"time"
-)
+//go:generate mockery --name=Rule --inpackage --filename=mock_rule.go
 
-type Rule struct {
+type Rule interface {
 	RequestMatcher
 	Responder
 }
@@ -14,6 +12,17 @@ type RequestMatcher interface {
 }
 
 type Responder interface {
-	Response(Request) Response
-	ResponseTime() time.Duration
+	Response(Request) (Response, error)
+}
+
+// Ensure RuleImpl implements Rule
+var _ Rule = (*RuleImpl)(nil)
+
+type RuleImpl struct {
+	RequestMatcher
+	Responder
+}
+
+func NewRule(requestMatcher RequestMatcher, responder Responder) RuleImpl {
+	return RuleImpl{RequestMatcher: requestMatcher, Responder: responder}
 }
