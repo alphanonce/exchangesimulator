@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/hex"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,14 +29,13 @@ func TestWriteToFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempFile, err := os.CreateTemp("", "test_message_*.json")
-			assert.NoError(t, err)
-			defer os.Remove(tempFile.Name())
+			tempDir := t.TempDir()
+			tempPath := filepath.Join(tempDir, "test_ws_message.yaml")
 
-			err = WriteToFile(tempFile.Name(), tt.message)
+			err := WriteToFile(tempPath, tt.message)
 			assert.NoError(t, err)
 
-			content, err := os.ReadFile(tempFile.Name())
+			content, err := os.ReadFile(tempPath)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedContent, string(content))
 		})
@@ -77,14 +77,13 @@ func TestReadFromFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempFile, err := os.CreateTemp("", "test_message_*.json")
-			assert.NoError(t, err)
-			defer os.Remove(tempFile.Name())
+			tempDir := t.TempDir()
+			tempPath := filepath.Join(tempDir, "test_ws_message.yaml")
 
-			err = os.WriteFile(tempFile.Name(), []byte(tt.content), 0644)
+			err := os.WriteFile(tempPath, []byte(tt.content), 0644)
 			assert.NoError(t, err)
 
-			message, err := ReadFromFile(tempFile.Name())
+			message, err := ReadFromFile(tempPath)
 
 			if tt.wantErr {
 				assert.Error(t, err)
