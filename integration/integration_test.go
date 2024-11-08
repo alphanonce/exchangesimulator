@@ -54,28 +54,34 @@ func TestIntegration(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test YAML files
-	err := os.Mkdir(filepath.Join(tempDir, "single_file"), 0755)
+	err := os.Mkdir(filepath.Join(tempDir, "http"), 0755)
 	assert.NoError(t, err)
-	err = os.Mkdir(filepath.Join(tempDir, "multiple_files"), 0755)
+	err = os.MkdirAll(filepath.Join(tempDir, "ws", "single_file"), 0755)
+	assert.NoError(t, err)
+	err = os.Mkdir(filepath.Join(tempDir, "ws", "multiple_files"), 0755)
 	assert.NoError(t, err)
 	testFiles := []struct {
 		Path string
 		Data []byte
 	}{
 		{
-			Path: filepath.Join(tempDir, "single_file", "2000-01-23T12:34:56.000000+09:00.yaml"),
+			Path: filepath.Join(tempDir, "http", "response.yaml"),
+			Data: []byte("status: 200\nbody: 'test content'\n"),
+		},
+		{
+			Path: filepath.Join(tempDir, "ws", "single_file", "2000-01-23T12:34:56.000000+09:00.yaml"),
 			Data: []byte("type: text\ndata: 'test content 1'\n"),
 		},
 		{
-			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.000000+09:00.yaml"),
+			Path: filepath.Join(tempDir, "ws", "multiple_files", "2000-01-23T12:34:56.000000+09:00.yaml"),
 			Data: []byte("type: text\ndata: 'test content 1'\n"),
 		},
 		{
-			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.010000+09:00.yaml"),
+			Path: filepath.Join(tempDir, "ws", "multiple_files", "2000-01-23T12:34:56.010000+09:00.yaml"),
 			Data: []byte("type: text\ndata: 'test content 2'\n"),
 		},
 		{
-			Path: filepath.Join(tempDir, "multiple_files", "2000-01-23T12:34:56.020000+09:00.yaml"),
+			Path: filepath.Join(tempDir, "ws", "multiple_files", "2000-01-23T12:34:56.020000+09:00.yaml"),
 			Data: []byte("type: text\ndata: 'test content 3'\n"),
 		},
 	}
@@ -100,6 +106,10 @@ func TestIntegration(t *testing.T) {
 				simulator.NewHttpRequestPredicate("POST", "/data"),
 				simulator.NewHttpResponseFromString(201, "Created", 200*time.Millisecond),
 			),
+			simulator.NewHttpRule(
+				simulator.NewHttpRequestPredicate("GET", "/file"),
+				simulator.NewHttpResponseFromFile(filepath.Join(tempDir, "http", "response.yaml"), 150*time.Millisecond),
+			),
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
 			simulator.NewHttpRule(
 				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
@@ -118,11 +128,11 @@ func TestIntegration(t *testing.T) {
 			),
 			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("single_file")),
-				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "single_file")),
+				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "ws", "single_file")),
 			),
 			simulator.NewWsRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("multiple_files")),
-				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "multiple_files")),
+				simulator.NewWsMessageFromFiles(filepath.Join(tempDir, "ws", "multiple_files")),
 			),
 			simulator.NewWsSubscriptionRule(
 				simulator.NewWsMessagePredicate(simulator.WsMessageText, []byte("subscribe")),
@@ -203,6 +213,13 @@ func testHttp(t *testing.T, config simulator.Config) {
 			path:           "/api/unknown",
 			expectedStatus: 404,
 			expectedBody:   "Invalid request",
+		},
+		{
+			name:           "Response from file",
+			method:         "GET",
+			path:           "/api/file",
+			expectedStatus: 200,
+			expectedBody:   "test content",
 		},
 		{
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity

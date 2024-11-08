@@ -22,6 +22,10 @@ func NewHttpResponseFromString(statusCode int, body string, responseTime time.Du
 	return http.NewResponseFromString(statusCode, body, responseTime)
 }
 
+func NewHttpResponseFromFile(filePath string, responseTime time.Duration) http.ResponseFromFile {
+	return http.NewResponseFromFile(filePath, responseTime)
+}
+
 func NewHttpRedirectResponder(targetUrl string) http.RedirectResponder {
 	return http.NewRedirectResponder(targetUrl)
 }
