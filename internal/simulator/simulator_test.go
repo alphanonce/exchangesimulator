@@ -138,13 +138,11 @@ func TestSimulator_saveMessageToFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir, err := os.MkdirTemp("", "ws_test")
-			require.NoError(t, err)
-			defer os.RemoveAll(tempDir)
+			tempDir := t.TempDir()
 
 			sim := New(Config{WsRecordDir: tempDir})
 
-			err = sim.saveMessageToFile(tt.message, tempDir)
+			err := sim.saveMessageToFile(tt.message, tempDir)
 			assert.NoError(t, err)
 
 			files, err := os.ReadDir(tempDir)

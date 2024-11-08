@@ -6,6 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"time"
+
+	"alphanonce.com/exchangesimulator/internal/log"
 )
 
 // Ensure RedirectResponder implements Responder
@@ -13,10 +18,14 @@ var _ Responder = (*RedirectResponder)(nil)
 
 type RedirectResponder struct {
 	targetUrl string
+	recordDir string
 }
 
-func NewRedirectResponder(targetUrl string) RedirectResponder {
-	return RedirectResponder{targetUrl: targetUrl}
+func NewRedirectResponder(targetUrl string, recordDir string) RedirectResponder {
+	return RedirectResponder{
+		targetUrl: targetUrl,
+		recordDir: recordDir,
+	}
 }
 
 func (r RedirectResponder) Response(request Request) (Response, error) {
@@ -43,5 +52,31 @@ func (r RedirectResponder) Response(request Request) (Response, error) {
 		return Response{}, fmt.Errorf("failed to read response data: %w", err)
 	}
 
-	return Response{StatusCode: resp.StatusCode, Body: data}, nil
+	response := Response{StatusCode: resp.StatusCode, Body: data}
+
+	if r.recordDir != "" {
+		err = r.saveResponseToFile(response)
+		if err != nil {
+			return Response{}, fmt.Errorf("failed to save to a file: %w", err)
+		}
+	}
+	return response, nil
+}
+
+func (r RedirectResponder) saveResponseToFile(response Response) error {
+	err := os.MkdirAll(r.recordDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	filename := time.Now().Format(time.RFC3339Nano) + ".yaml"
+	path := filepath.Join(r.recordDir, filename)
+
+	err = WriteToFile(path, response)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Http response recorded", log.Any("path", path))
+	return nil
 }

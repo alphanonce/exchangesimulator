@@ -26,6 +26,6 @@ func NewHttpResponseFromFile(filePath string, responseTime time.Duration) http.R
 	return http.NewResponseFromFile(filePath, responseTime)
 }
 
-func NewHttpRedirectResponder(targetUrl string) http.RedirectResponder {
-	return http.NewRedirectResponder(targetUrl)
+func NewHttpRedirectResponder(targetUrl string, recordDir string) http.RedirectResponder {
+	return http.NewRedirectResponder(targetUrl, recordDir)
 }

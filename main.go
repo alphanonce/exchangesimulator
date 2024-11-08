@@ -25,7 +25,7 @@ func main() {
 			),
 			simulator.NewHttpRule(
 				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
-				simulator.NewHttpRedirectResponder("https://api.binance.com"),
+				simulator.NewHttpRedirectResponder("https://api.binance.com", filepath.Join("records", "http", "ping")),
 			),
 		},
 		WsEndpoint: "/ws",

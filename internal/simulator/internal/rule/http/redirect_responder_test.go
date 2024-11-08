@@ -3,15 +3,22 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRedirectResponder(t *testing.T) {
 	targetURL := "http://example.com"
-	responder := NewRedirectResponder(targetURL)
+	recordDir := "test/path"
+
+	responder := NewRedirectResponder(targetURL, recordDir)
+
 	assert.Equal(t, targetURL, responder.targetUrl)
+	assert.Equal(t, recordDir, responder.recordDir)
 }
 
 func TestRedirectResponder_Response(t *testing.T) {
@@ -56,7 +63,7 @@ func TestRedirectResponder_Response(t *testing.T) {
 				tt.targetURL = server.URL
 			}
 
-			responder := NewRedirectResponder(tt.targetURL)
+			responder := NewRedirectResponder(tt.targetURL, "")
 			response, err := responder.Response(tt.request)
 
 			if tt.expectedError != "" {
@@ -67,6 +74,39 @@ func TestRedirectResponder_Response(t *testing.T) {
 				assert.Equal(t, tt.expectedStatus, response.StatusCode)
 				assert.Equal(t, []byte(tt.expectedBody), response.Body)
 			}
+		})
+	}
+}
+
+func TestRedirectResponder_saveResponseToFile(t *testing.T) {
+	tests := []struct {
+		name            string
+		response        Response
+		expectedContent string
+	}{
+		{
+			name:            "Basic test",
+			response:        Response{StatusCode: 200, Body: []byte("Hello, World!")},
+			expectedContent: "status: 200\nbody: |-\n    Hello, World!\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+
+			responder := NewRedirectResponder("", tempDir)
+
+			err := responder.saveResponseToFile(tt.response)
+			assert.NoError(t, err)
+
+			files, err := os.ReadDir(tempDir)
+			assert.NoError(t, err)
+			require.Len(t, files, 1)
+
+			content, err := os.ReadFile(filepath.Join(tempDir, files[0].Name()))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedContent, string(content))
 		})
 	}
 }

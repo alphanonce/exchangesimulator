@@ -113,7 +113,7 @@ func TestIntegration(t *testing.T) {
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
 			simulator.NewHttpRule(
 				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
-				simulator.NewHttpRedirectResponder("https://api.binance.com"),
+				simulator.NewHttpRedirectResponder("https://api.binance.com", filepath.Join(tempDir, "record", "http")),
 			),
 		},
 		WsEndpoint: "/ws",
@@ -147,7 +147,7 @@ func TestIntegration(t *testing.T) {
 			),
 		},
 		WsRedirectUrl: mockServerURL,
-		WsRecordDir:   filepath.Join(tempDir, "redirect"),
+		WsRecordDir:   filepath.Join(tempDir, "redirect", "ws"),
 	}
 
 	// Create a simulator
@@ -164,24 +164,29 @@ func TestIntegration(t *testing.T) {
 
 	// Run HTTP tests
 	t.Run("HTTP Tests", func(t *testing.T) {
-		testHttp(t, config)
+		testHttp(t, config, filepath.Join(tempDir, "record", "http"))
 	})
 
 	// Run WebSocket tests
 	t.Run("WebSocket Tests", func(t *testing.T) {
-		testWs(t, config)
+		testWsBasicTest(t, config)
+		testWsMessageMatchers(t, config)
+		testWsMessageHandlers(t, config)
+		testWsSubscription(t, config)
+		testWsRedirection(t, config)
 	})
 }
 
-func testHttp(t *testing.T, config simulator.Config) {
+func testHttp(t *testing.T, config simulator.Config, recordDir string) {
 	tests := []struct {
-		name           string
-		method         string
-		path           string
-		body           string
-		expectedStatus int
-		expectedBody   string
-		expectedDelay  time.Duration
+		name                string
+		method              string
+		path                string
+		body                string
+		expectedStatus      int
+		expectedBody        string
+		expectedDelay       time.Duration
+		expectedFileContent string
 	}{
 		{
 			name:           "GET /api/test",
@@ -223,12 +228,13 @@ func testHttp(t *testing.T, config simulator.Config) {
 		},
 		{
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
-			name:           "Redirect to Binance",
-			method:         "GET",
-			path:           "/api/v3/ping",
-			body:           "",
-			expectedStatus: 200,
-			expectedBody:   "{}",
+			name:                "Redirect to Binance",
+			method:              "GET",
+			path:                "/api/v3/ping",
+			body:                "",
+			expectedStatus:      200,
+			expectedBody:        "{}",
+			expectedFileContent: "status: 200\nbody: |-\n    {}\n",
 		},
 	}
 
@@ -255,16 +261,20 @@ func testHttp(t *testing.T, config simulator.Config) {
 				assert.GreaterOrEqual(t, duration, tt.expectedDelay)
 				assert.Less(t, duration, tt.expectedDelay+50*time.Millisecond) // Allow for some overhead
 			}
+			if tt.expectedFileContent != "" {
+				files, err := os.ReadDir(recordDir)
+				require.NoError(t, err)
+				assert.Len(t, files, 1)
+
+				content, err := os.ReadFile(filepath.Join(recordDir, files[0].Name()))
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedFileContent, string(content))
+
+				err = os.Remove(filepath.Join(recordDir, files[0].Name()))
+				require.NoError(t, err)
+			}
 		})
 	}
-}
-
-func testWs(t *testing.T, config simulator.Config) {
-	testWsBasicTest(t, config)
-	testWsMessageMatchers(t, config)
-	testWsMessageHandlers(t, config)
-	testWsSubscription(t, config)
-	testWsRedirection(t, config)
 }
 
 func testWsBasicTest(t *testing.T, config simulator.Config) {
