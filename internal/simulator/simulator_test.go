@@ -38,12 +38,12 @@ func TestSimulator_simulateHttpResponse(t *testing.T) {
 	}{
 		{
 			name:         "Matching request",
-			request:      HttpRequest{Method: "GET", Path: "/api/test"},
+			request:      HttpRequest{Method: "GET", Path: "/test"},
 			expectedResp: HttpResponse{StatusCode: 200, Body: []byte("OK")},
 		},
 		{
 			name:         "Non-matching request",
-			request:      HttpRequest{Method: "POST", Path: "/api/other"},
+			request:      HttpRequest{Method: "POST", Path: "/other"},
 			expectedResp: HttpResponse{StatusCode: 404, Body: []byte("Invalid request")},
 		},
 	}

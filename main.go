@@ -17,14 +17,14 @@ func init() {
 func main() {
 	config := simulator.Config{
 		ServerAddress: "localhost:8080",
-		HttpBasePath:  "/api",
+		HttpBasePath:  "/http",
 		HttpRules: []simulator.HttpRule{
 			simulator.NewHttpRule(
-				simulator.NewHttpRequestPredicate("GET", "/v4/public/platform/status"),
+				simulator.NewHttpRequestPredicate("GET", "/api/v4/public/platform/status"),
 				simulator.NewHttpResponseFromString(200, `{"status":"1"}`, time.Second),
 			),
 			simulator.NewHttpRule(
-				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
+				simulator.NewHttpRequestPredicate("GET", "/api/v3/ping"),
 				simulator.NewHttpRedirectResponder("https://api.binance.com", filepath.Join("records", "http", "ping")),
 			),
 		},

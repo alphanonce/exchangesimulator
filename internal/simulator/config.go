@@ -2,11 +2,10 @@ package simulator
 
 import (
 	"slices"
-	"strings"
 )
 
 type Config struct {
-	// HttpBasePath and WsEndpoint must not be a prefix of each other
+	// HttpBasePath and WsEndpoint must not be a prefix of each other
 	ServerAddress string
 	HttpBasePath  string
 	HttpRules     []HttpRule
@@ -17,14 +16,7 @@ type Config struct {
 }
 
 func (c *Config) GetHttpRule(request HttpRequest) (HttpRule, bool) {
-	suffix, found := strings.CutPrefix(request.Path, c.HttpBasePath)
-	if !found {
-		return nil, false
-	}
-
-	tmpRequest := request
-	tmpRequest.Path = suffix
-	i := slices.IndexFunc(c.HttpRules, func(r HttpRule) bool { return r.MatchRequest(tmpRequest) })
+	i := slices.IndexFunc(c.HttpRules, func(r HttpRule) bool { return r.MatchRequest(request) })
 	if i == -1 {
 		return nil, false
 	}
