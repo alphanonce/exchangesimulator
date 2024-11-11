@@ -31,10 +31,9 @@ func (s Simulator) Run() error {
 }
 
 func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
-	requestPath := string(r.URL.Path)
-	if s.config.HttpBasePath != "" && strings.HasPrefix(requestPath, s.config.HttpBasePath) {
+	if s.config.HttpBasePath != "" && strings.HasPrefix(r.URL.Path, s.config.HttpBasePath) {
 		s.httpRequestHandler(w, r)
-	} else if s.config.WsEndpoint != "" && requestPath == s.config.WsEndpoint {
+	} else if s.config.WsEndpoint != "" && r.URL.Path == s.config.WsEndpoint {
 		s.wsRequestHandler(w, r)
 	} else {
 		http.Error(w, "Invalid endpoint", http.StatusNotFound)
@@ -42,7 +41,7 @@ func (s Simulator) requestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Simulator) httpRequestHandler(w http.ResponseWriter, r *http.Request) {
-	request, err := convertHttpRequest(r)
+	request, err := convertHttpRequest(r, s.config.HttpBasePath)
 	if err != nil {
 		logger.Error("Error reading request body", log.Any("error", err))
 		http.Error(w, "Invalid body", http.StatusBadRequest)
@@ -83,16 +82,19 @@ func (s Simulator) simulateHttpResponse(request HttpRequest) (HttpResponse, erro
 	return rule.Response(request)
 }
 
-func convertHttpRequest(r *http.Request) (HttpRequest, error) {
+func convertHttpRequest(r *http.Request, basePath string) (HttpRequest, error) {
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		return HttpRequest{}, err
 	}
 
+	// r.URL.Path must start with basePath
+	path, _ := strings.CutPrefix(r.URL.Path, basePath)
+
 	request := HttpRequest{
 		Method:      r.Method,
 		Host:        r.Host,
-		Path:        r.URL.Path,
+		Path:        path,
 		QueryString: r.URL.RawQuery,
 		Header:      r.Header,
 		Body:        bodyBytes,

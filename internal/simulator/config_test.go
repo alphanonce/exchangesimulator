@@ -29,11 +29,10 @@ func TestConfig_GetHttpRule(t *testing.T) {
 		expectedRule HttpRule
 		expectedOk   bool
 	}{
-		{"Matching GET request", HttpRequest{Method: "GET", Path: "/api/users"}, mockRule1, true},
-		{"Matching POST request", HttpRequest{Method: "POST", Path: "/api/users"}, mockRule2, true},
-		{"Non-matching path", HttpRequest{Method: "GET", Path: "/api/products"}, nil, false},
-		{"Non-matching method", HttpRequest{Method: "PUT", Path: "/api/users"}, nil, false},
-		{"Non-matching base path", HttpRequest{Method: "GET", Path: "/users"}, nil, false},
+		{"Matching GET request", HttpRequest{Method: "GET", Path: "/users"}, mockRule1, true},
+		{"Matching POST request", HttpRequest{Method: "POST", Path: "/users"}, mockRule2, true},
+		{"Non-matching path", HttpRequest{Method: "GET", Path: "/products"}, nil, false},
+		{"Non-matching method", HttpRequest{Method: "PUT", Path: "/users"}, nil, false},
 	}
 
 	for _, tt := range tests {

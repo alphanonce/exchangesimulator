@@ -96,7 +96,7 @@ func TestIntegration(t *testing.T) {
 
 	config := simulator.Config{
 		ServerAddress: "localhost:8081",
-		HttpBasePath:  "/api",
+		HttpBasePath:  "/http",
 		HttpRules: []simulator.HttpRule{
 			simulator.NewHttpRule(
 				simulator.NewHttpRequestPredicate("GET", "/test"),
@@ -112,7 +112,7 @@ func TestIntegration(t *testing.T) {
 			),
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
 			simulator.NewHttpRule(
-				simulator.NewHttpRequestPredicate("GET", "/v3/ping"),
+				simulator.NewHttpRequestPredicate("GET", "/api/v3/ping"),
 				simulator.NewHttpRedirectResponder("https://api.binance.com", filepath.Join(tempDir, "record", "http")),
 			),
 		},
@@ -189,17 +189,17 @@ func testHttp(t *testing.T, config simulator.Config, recordDir string) {
 		expectedFileContent string
 	}{
 		{
-			name:           "GET /api/test",
+			name:           "GET /http/test",
 			method:         "GET",
-			path:           "/api/test",
+			path:           "/http/test",
 			expectedStatus: 200,
 			expectedBody:   "OK",
 			expectedDelay:  100 * time.Millisecond,
 		},
 		{
-			name:           "POST /api/data",
+			name:           "POST /http/data",
 			method:         "POST",
-			path:           "/api/data",
+			path:           "/http/data",
 			body:           "some data",
 			expectedStatus: 201,
 			expectedBody:   "Created",
@@ -215,14 +215,14 @@ func testHttp(t *testing.T, config simulator.Config, recordDir string) {
 		{
 			name:           "Matched endpoint, unmatched path",
 			method:         "GET",
-			path:           "/api/unknown",
+			path:           "/http/unknown",
 			expectedStatus: 404,
 			expectedBody:   "Invalid request",
 		},
 		{
 			name:           "Response from file",
 			method:         "GET",
-			path:           "/api/file",
+			path:           "/http/file",
 			expectedStatus: 200,
 			expectedBody:   "test content",
 		},
@@ -230,7 +230,7 @@ func testHttp(t *testing.T, config simulator.Config, recordDir string) {
 			// https://developers.binance.com/docs/binance-spot-api-docs/rest-api#test-connectivity
 			name:                "Redirect to Binance",
 			method:              "GET",
-			path:                "/api/v3/ping",
+			path:                "/http/api/v3/ping",
 			body:                "",
 			expectedStatus:      200,
 			expectedBody:        "{}",
